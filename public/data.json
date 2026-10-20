@@ -1,0 +1,26 @@
+{
+  "updated_at": null,
+  "status": "not_run",
+  "coverage": {
+    "universe": 0,
+    "attempted": 0,
+    "processed": 0,
+    "sec_processed": 0,
+    "universe_complete": false,
+    "failures": [
+      {
+        "error": "수집 작업 아직 실행되지 않음"
+      }
+    ]
+  },
+  "top10": [],
+  "watchlist": [],
+  "fx": null,
+  "limitations": [
+    "개발 초기 상태: 실제 수집 실행 결과 없음",
+    "Float/CTB/환율/API 연결 필요"
+  ],
+  "backtest": {
+    "status": "blocked: historical point-in-time data absent"
+  }
+}

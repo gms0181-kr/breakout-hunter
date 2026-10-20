@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>BREAKOUT HUNTER 1.0</title>
+<style>
+:root{color-scheme:dark;font:15px system-ui,sans-serif;background:#0b1017;color:#e4edf6}*{box-sizing:border-box}body{margin:0}header,main{max-width:1440px;margin:auto;padding:28px}header{border-bottom:1px solid #243142}h1{font-size:28px;letter-spacing:-1px;margin:6px 0}.tag{color:#62dbc3;letter-spacing:3px;font-size:11px}p,small{color:#a4b4c7;line-height:1.6}.row{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:24px 0}.card{padding:20px;background:#121c29;border:1px solid #243142;border-radius:12px}.value{font-size:25px;margin-top:8px}.warning{padding:16px;border:1px solid #826432;background:#251f15;color:#edc98d;border-radius:10px}a{color:#69d8c5}button,input{background:#182637;color:#e4edf6;border:1px solid #37506d;border-radius:7px;padding:10px}button{cursor:pointer}table{width:100%;border-collapse:collapse;white-space:nowrap}th,td{text-align:left;padding:14px;border-bottom:1px solid #243142}th{font-size:12px;color:#8fa4bb}.table{overflow:auto;margin:20px 0}dialog{width:min(1000px,95vw);max-height:90vh;overflow:auto;background:#101a26;color:#e4edf6;border:1px solid #37506d;border-radius:12px}dialog::backdrop{background:#000b}pre{white-space:pre-wrap;font-size:12px;color:#a6bacf}progress{width:100%;accent-color:#62dbc3}#error{color:#e9ae7e}svg{width:100%;height:160px}.engines{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}details{margin:18px 0}label{font-size:12px}@media(max-width:700px){header,main{padding:18px}.cards{grid-template-columns:repeat(2,1fr)}h1{font-size:23px}.engines{grid-template-columns:repeat(3,1fr)}th,td{padding:10px}.value{font-size:21px}}
+</style></head><body><header><div class="row"><div><div class="tag">INDEPENDENT MARKET INTELLIGENCE</div><h1>BREAKOUT HUNTER <small>1.0</small></h1><p>급등 전 거래량 · 유통주식 · 숏 압력 · 공급 상태</p></div><div><div id="clock"></div><small>일봉 데이터 · IEX 부분 거래소 · 통합 시세 미연결</small></div></div></header>
+<main><div class="warning">개발 중 · 검증되지 않은 시가총액·거래정지·토스 주문 가능 종목은 최종 TOP 10에서 보류합니다. 빈 순위를 가짜 데이터로 채우지 않습니다.</div>
+<div class="cards"><div class="card">수집 대상<div class="value" id="universe">—</div></div><div class="card">가격 수집 완료<div class="value" id="processed">—</div></div><div class="card">SEC 목록 수집<div class="value" id="sec">—</div></div><div class="card">마지막 수집<div id="updated" class="value">—</div></div></div>
+<progress id="progress" max="100" value="0"></progress><p id="status">수집 결과를 불러오는 중입니다.</p><p id="error" role="status"></p>
+<div class="row"><h2 id="tabletitle">검증 완료 TOP 10</h2><div><label>시총 상한(달러) <input id="cap" type="number" value="2000000000" min="0" step="1000000"></label> <button id="watch">검증 대기 후보</button></div></div>
+<p>총점은 확인된 항목의 관측 점수입니다. 미확인 항목은 —로 표시하며 신뢰도(확인 배점 비율)를 함께 확인하세요. 시총 필터 변경은 확인된 시총이 있는 행에만 적용됩니다.</p>
+<div class="table"><table><thead><tr><th>순위</th><th>종목</th><th>가격 / 원화</th><th>등락률</th><th>거래량 배수</th><th>Float</th><th>CTB</th><th>점수 / 신뢰도</th><th>유형</th><th>기준시각</th></tr></thead><tbody id="rows"></tbody></table></div>
+<details><summary>점수 산식 · 데이터 한계 · 실패 목록</summary><div id="limits"></div><p>V 25점: RVOL20 ≥2/3/5/10배 → 8/12/16/20점, 3~5일 증가 추세 +3점, 가격 상승 ≤5(%) +2점.<br>F 20점: Float ≤5,000,000(주) 10점, ≤10,000,000(주) 5점 + 회전율×10(최대10점). O/S 대체치에는 Float 점수를 주지 않음.<br>S 20점: CTB 6 + 대차잔량4 + Short Float4 + 잔고증가3 + DTC3. 교차검증 필수.<br>R 15점: 3개월하락6 + 1개월하락3 + 저점방어3 + 거래량동반3.<br>SEC 15점: 전체 공급 검토 및 현재 자유매도 불가가 근거로 확인된 경우만 15점.<br>이벤트 5점: 공식 출처 검증 시 5점.</p><pre id="failures"></pre></details>
+<details><summary>HUBC 과거 시점 검증</summary><p>게시글 주장은 검증 입력값이며 사실로 채택하지 않았습니다. 당시 공개 자료 스냅샷이 없는 상태에서는 탐지·전체 순위를 재현했다고 표시하지 않습니다.</p><pre id="backtest"></pre></details>
+<footer><p>브라우저는 60초마다 저장된 결과를 확인합니다. 실제 데이터 수집 스케줄은 별도이며 최신 시각을 확인하세요.</p><a href="https://github.com/gms0181-kr/breakout-hunter">소스 및 실행 기록</a></footer>
+</main><dialog id="detail"><button id="close">닫기</button><div id="detailbody"></div></dialog>
+<script>
+let report=null,watch=false;
+const $=id=>document.getElementById(id);
+const fmt=(v,unit,d=2)=>v==null?'미확인':Number(v).toLocaleString('ko-KR',{maximumFractionDigits:d})+'('+unit+')';
+const escapeHtml=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const et=v=>new Date(v).toLocaleString('ko-KR',{timeZone:'America/New_York'});
+const kst=v=>new Date(v).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'});
+function link(url,label){try{if(new URL(url).protocol!=='https:')return '';return '<a target="_blank" rel="noopener noreferrer" href="'+escapeHtml(url)+'">'+escapeHtml(label)+'</a>'}catch{return ''}}
+function clock(){const now=new Date();$('clock').textContent='ET '+et(now)+' / KST '+kst(now)}clock();setInterval(clock,1000);
+function draw(){
+ if(!report)return;
+ const c=report.coverage||{};$('universe').textContent=fmt(c.universe,'종목',0);$('processed').textContent=fmt(c.processed,'종목',0);$('sec').textContent=fmt(c.sec_processed,'종목',0);
+ $('updated').textContent=report.updated_at?kst(report.updated_at):'실행 대기';$('updated').style.fontSize='16px';
+ $('progress').value=c.universe?100*c.processed/c.universe:0;
+ $('status').textContent='실제 가격 처리 완료율 '+(c.universe?(100*c.processed/c.universe).toFixed(2):'0')+'(%) · 대상 수집 '+(c.universe_complete?'완료':'부분/대기')+' · SEC는 별도 부분 검사';
+ $('tabletitle').textContent=watch?'검증 대기 후보 · 최종 순위 아님':'검증 완료 TOP 10';
+ const cap=Number($('cap').value);
+ let list=(watch?report.watchlist:report.top10)||[];
+ list=list.filter(s=>s.market_cap==null||s.market_cap<=cap);
+ $('rows').innerHTML=list.length?list.map((s,i)=>'<tr><td>'+(i+1)+'</td><td><button data-ticker="'+escapeHtml(s.ticker)+'">'+escapeHtml(s.ticker)+'</button><br><small>'+escapeHtml(s.name)+'</small></td><td>'+fmt(s.price,'달러')+'<br><small>'+(report.fx?fmt(s.price*report.fx.rate,'원'):'환율 연결 필요')+'</small></td><td>'+fmt(s.change_pct,'%')+'</td><td>'+fmt(s.metrics?.ratios?.['20'],'배')+'</td><td>'+fmt(s.float,'주',0)+'</td><td>'+fmt(s.short?.ctb,'%')+'</td><td>'+fmt(s.score,'점')+' / '+fmt(s.confidence,'%')+'</td><td>'+escapeHtml((s.signals||[]).join(' · '))+'</td><td>'+escapeHtml(s.price_as_of||'미확인')+'</td></tr>').join(''):'<tr><td colspan="10">검증을 마친 후보가 없습니다. 데이터 연결·처리 상태와 실패 목록을 확인하세요.</td></tr>';
+ document.querySelectorAll('[data-ticker]').forEach(b=>b.onclick=()=>detail(list.find(s=>s.ticker===b.dataset.ticker)));
+ $('limits').innerHTML=(report.limitations||[]).map(x=>'<p>'+escapeHtml(x)+'</p>').join('');
+ $('failures').textContent=JSON.stringify(c.failures||[],null,2);
+ $('backtest').textContent=JSON.stringify(report.backtest||{},null,2);
+}
+function chart(bars,key){
+ const values=bars.map(b=>b[key]).filter(v=>v!=null);
+ if(!values.length)return '<p>차트 데이터 연결 필요</p>';
+ const low=Math.min(...values),range=Math.max(...values)-low||1;
+ const points=values.map((v,i)=>(10+i*780/Math.max(1,values.length-1))+','+(145-(v-low)*130/range)).join(' ');
+ return '<svg role="img" aria-label="'+key+' 일봉 추이" viewBox="0 0 800 160"><polyline fill="none" stroke="#62dbc3" stroke-width="2" points="'+points+'"/></svg>';
+}
+function detail(s){
+ $('detailbody').innerHTML='<h2>'+escapeHtml(s.ticker)+' · '+escapeHtml(s.name)+'</h2><p>'+escapeHtml((s.signals||[]).join(' · '))+'</p><div class="engines">'+Object.entries(s.scores||{}).map(([k,v])=>'<div class="card">'+k+'<p>'+fmt(v,'점')+'</p></div>').join('')+'</div><h3>가격 · 거래량</h3>'+chart(s.bars||[],'close')+chart(s.bars||[],'volume')+'<p>'+escapeHtml(s.feed)+'</p><h3>공매도 / CTB / 대차</h3><p>'+escapeHtml(s.short?.status||'시계열 미연결')+'</p><h3>SEC 공급 상태</h3><p>'+escapeHtml(s.sec?.status||'검토 대기')+'</p><p>실제 자유매도 가능 시점·잠재 신규 발행수·병합 이력: 검토 미완료</p>'+(s.sec?.timeline||[]).map(t=>'<p>'+escapeHtml(t.filed)+' '+link(t.source,t.form)+' · '+escapeHtml(t.status)+'</p>').join('')+'<h3>시나리오</h3><p>상승: 거래량 증가와 저점 방어 지속 시 관찰.<br>중립: 가격 구조·공급 확인 전 검증 대기.<br>하락: 저점 이탈 또는 실제 자유매도 공급 확인 시 위험 재평가.</p><h3>출처</h3>'+link(s.chartexchange,'ChartExchange')+' · '+link(s.price_source,'시세 제공처')+'<h3>원본 상태</h3><pre>'+escapeHtml(JSON.stringify({float:s.float,outstanding:s.outstanding,rotation:s.rotation,rotation_basis:s.rotation_basis,eligibility:s.eligibility,toss_orderable:s.toss_orderable,missing:s.missing},null,2))+'</pre>';
+ $('detail').showModal();history.replaceState(null,'','#'+encodeURIComponent(s.ticker));
+}
+$('close').onclick=()=>{$('detail').close();history.replaceState(null,'',location.pathname)};
+$('watch').onclick=()=>{watch=!watch;draw()};$('cap').oninput=draw;
+async function refresh(){try{const res=await fetch('./data.json?t='+Date.now(),{cache:'no-store'});if(!res.ok)throw Error('HTTP '+res.status);report=await res.json();$('error').textContent='';draw()}catch(e){$('error').textContent='데이터 불러오기 실패: '+e.message+' · 마지막 성공 결과를 유지합니다.'}}
+refresh();setInterval(refresh,60000);
+</script></body></html>

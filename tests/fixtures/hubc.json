@@ -1,0 +1,19 @@
+{
+  "ticker": "HUBC",
+  "status": "unverified_claims",
+  "claims": {
+    "date": "2026-10-19",
+    "price": 0.33,
+    "volume": 2810000,
+    "average_volume_50": 600000,
+    "reverse_split": "2026-09 1:25"
+  },
+  "expected_detection": null,
+  "replay_dates": [
+    "2026-10-12",
+    "2026-10-14",
+    "2026-10-16",
+    "2026-10-19"
+  ],
+  "reason": "Requires contemporaneous licensed market data and SEC evidence; no future information permitted"
+}
