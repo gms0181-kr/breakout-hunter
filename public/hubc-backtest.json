@@ -1,0 +1,53 @@
+{
+  "status": "blocked: point-in-time source snapshots absent",
+  "HUBC": [
+    {
+      "date": "2026-10-12",
+      "detected": null,
+      "time": null,
+      "scores": null,
+      "rank": null,
+      "float": null,
+      "volume_ratio": null,
+      "short": null,
+      "sec": null,
+      "reason": "당시 이용 가능했던 검증된 가격/Float/SEC 증거 스냅샷 없음; 사용자 게시글 수치를 사실로 사용하지 않음"
+    },
+    {
+      "date": "2026-10-14",
+      "detected": null,
+      "time": null,
+      "scores": null,
+      "rank": null,
+      "float": null,
+      "volume_ratio": null,
+      "short": null,
+      "sec": null,
+      "reason": "당시 이용 가능했던 검증된 가격/Float/SEC 증거 스냅샷 없음; 사용자 게시글 수치를 사실로 사용하지 않음"
+    },
+    {
+      "date": "2026-10-16",
+      "detected": null,
+      "time": null,
+      "scores": null,
+      "rank": null,
+      "float": null,
+      "volume_ratio": null,
+      "short": null,
+      "sec": null,
+      "reason": "당시 이용 가능했던 검증된 가격/Float/SEC 증거 스냅샷 없음; 사용자 게시글 수치를 사실로 사용하지 않음"
+    },
+    {
+      "date": "2026-10-19",
+      "detected": null,
+      "time": null,
+      "scores": null,
+      "rank": null,
+      "float": null,
+      "volume_ratio": null,
+      "short": null,
+      "sec": null,
+      "reason": "당시 이용 가능했던 검증된 가격/Float/SEC 증거 스냅샷 없음; 사용자 게시글 수치를 사실로 사용하지 않음"
+    }
+  ]
+}
