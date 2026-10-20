@@ -170,6 +170,9 @@ def refresh_report():
     checked={s["ticker"]:s for s in stocks}
     for group in ("watchlist","research_top10"):
         report[group]=[checked[s["ticker"]] for s in report.get(group,[])]
+    if report.get("top10"):
+        report["last_top10"]=report["top10"]
+        report["last_top10_as_of"]=report.get("ranking_updated_at",report.get("updated_at"))
     report["top10"]=top
     report["halt_check"]={k:v for k,v in feed.items() if k!="events"}
     report["ranking_updated_at"]=feed["checked_at"]

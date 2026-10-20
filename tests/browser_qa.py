@@ -27,7 +27,21 @@ async def main():
             await page.locator("#verified").click()
             valid=await page.evaluate("activeTop10().length")
             shown=await page.locator("#rows [data-ticker]").count()
-            assert shown==valid, (shown,valid)
+            stored=await page.evaluate("storedTop10().length")
+            assert shown==stored, (shown,stored)
+            # Expired evidence must stay visibly historical, never silently disappear
+            # or count as a current actionable signal.
+            await page.evaluate("""() => {
+                window.originalReport=report;
+                report=JSON.parse(JSON.stringify(report));
+                for(const s of storedTop10()) if(s.halt_check) s.halt_check.expires_at='2000-01-01T00:00:00Z';
+                draw();
+            }""")
+            assert await page.evaluate("activeTop10().length")==0
+            assert await page.locator("#rows [data-ticker]").count()==stored
+            if stored:
+                assert "재확인" in await page.locator("#tabletitle").inner_text()
+            await page.evaluate("report=window.originalReport;delete window.originalReport;draw()")
             if valid:
                 assert await page.locator("#rows").inner_text()
             await page.locator("#research").click()

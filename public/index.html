@@ -20,17 +20,18 @@ const et=v=>new Date(v).toLocaleString('ko-KR',{timeZone:'America/New_York'});
 const kst=v=>new Date(v).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'});
 function link(url,label){try{if(new URL(url).protocol!=='https:')return '';return '<a target="_blank" rel="noopener noreferrer" href="'+escapeHtml(url)+'">'+escapeHtml(label)+'</a>'}catch{return ''}}
 function clock(){const now=new Date();$('clock').textContent='ET '+et(now)+' / KST '+kst(now)}clock();setInterval(clock,1000);
+function storedTop10(){return report?.top10?.length?report.top10:(report?.last_top10||[])}
 function activeTop10(){return (report?.top10||[]).filter(s=>['no_halt_detected','resumed'].includes(s.halt_check?.status)&&Date.parse(s.halt_check?.expires_at)>Date.now())}
-function haltLabel(s){return ({halted:'정지·재개 대기',unverified:'미확인',no_halt_detected:'정지 미감지·최근 체결',resumed:'재개 후 체결 확인'})[s.halt_check?.status]||'미확인'}
+function haltLabel(s){if(['no_halt_detected','resumed'].includes(s.halt_check?.status)&&!(Date.parse(s.halt_check?.expires_at)>Date.now()))return '유효시간 만료 · 재확인 필요';return ({halted:'정지·재개 대기',unverified:'미확인',no_halt_detected:'정지 미감지·최근 체결',resumed:'재개 후 체결 확인'})[s.halt_check?.status]||'미확인'}
 function draw(){
  if(!report)return;
  const c=report.coverage||{};$('universe').textContent=fmt(c.universe,'종목',0);$('processed').textContent=fmt(c.processed,'종목',0);$('sec').textContent=fmt(c.sec_processed,'종목',0);
  $('updated').textContent=report.updated_at?kst(report.updated_at):'실행 대기';$('updated').style.fontSize='16px';
  $('progress').value=c.universe?100*c.processed/c.universe:0;
  $('status').textContent='실제 가격 처리 완료율 '+(c.universe?(100*c.processed/c.universe).toFixed(2):'0')+'(%) · 대상 수집 '+(c.universe_complete?'완료':'부분/대기')+' · SEC는 별도 부분 검사';
- $('tabletitle').textContent=research?'연구용 TOP 10 · 미검증 관측점수':watch?'검증 대기 후보 · 최종 순위 아님':'실전 후보 TOP 10';
+ $('tabletitle').textContent=research?'연구용 TOP 10 · 미검증 관측점수':watch?'검증 대기 후보 · 최종 순위 아님':activeTop10().length?'실전 후보 TOP 10 · 최신 점검 '+activeTop10().length+'(종목)':'지난 실전 후보 · 유효시간 만료·재확인 필요';
  const cap=Number($('cap').value);
- let list=(research?report.research_top10:watch?report.watchlist:activeTop10())||[];
+ let list=(research?report.research_top10:watch?report.watchlist:storedTop10())||[];
  list=list.filter(s=>s.market_cap==null||s.market_cap<=cap);
  $('rows').innerHTML=list.length?list.map((s,i)=>'<tr><td>'+(i+1)+'</td><td><button data-ticker="'+escapeHtml(s.ticker)+'">'+escapeHtml(s.ticker)+'</button><br><small>'+escapeHtml(s.name)+'</small></td><td>'+fmt(s.price,'달러')+'<br><small>'+(report.fx?fmt(s.price*report.fx.rate,'원'):'환율 연결 필요')+'</small></td><td>'+fmt(s.change_pct,'%')+'</td><td>'+fmt(s.metrics?.ratios?.['20'],'배')+'</td><td>'+fmt(s.float,'주',0)+'</td><td>'+fmt(s.short?.ctb,'%')+'</td><td>'+fmt(s.score,'점')+' / '+fmt(s.confidence,'%')+'</td><td>'+escapeHtml((s.signals||[]).join(' · '))+'</td><td>'+escapeHtml(haltLabel(s))+'<br><small>'+(s.halt_check?.checked_at?escapeHtml(kst(s.halt_check.checked_at)):'자료 대기')+'</small></td><td>'+escapeHtml(s.price_as_of||'미확인')+'</td></tr>').join(''):'<tr><td colspan="11">'+(research||watch?'현재 시총 필터에 해당하는 후보가 없습니다.':'현재 유효한 실전 후보가 없습니다. 정지 자료·체결 확인 시각과 검증 대기 후보를 확인하세요.')+'</td></tr>';
  document.querySelectorAll('[data-ticker]').forEach(b=>b.onclick=()=>detail(list.find(s=>s.ticker===b.dataset.ticker)));
@@ -52,7 +53,7 @@ function detail(s){
 }
 $('close').onclick=()=>{$('detail').close();history.replaceState(null,'',location.pathname)};
 $('verified').onclick=()=>{research=false;watch=false;draw()};$('research').onclick=()=>{research=true;watch=false;draw()};$('watch').onclick=()=>{watch=true;research=false;draw()};$('cap').oninput=draw;
-async function refresh(){try{const res=await fetch('./data.json?t='+Date.now(),{cache:'no-store'});if(!res.ok)throw Error('HTTP '+res.status);report=await res.json();$('error').textContent='';draw()}catch(e){$('error').textContent='데이터 불러오기 실패: '+e.message+' · 마지막 성공 결과를 유지합니다.'}}
+async function refresh(){try{let res;try{res=await fetch('https://raw.githubusercontent.com/gms0181-kr/breakout-hunter/main/public/data.json?t='+Date.now(),{cache:'no-store'});if(!res.ok)throw Error('HTTP '+res.status);report=await res.json()}catch{res=await fetch('./data.json?t='+Date.now(),{cache:'no-store'});if(!res.ok)throw Error('HTTP '+res.status);report=await res.json()}$('error').textContent='';draw()}catch(e){$('error').textContent='데이터 불러오기 실패: '+e.message+' · 마지막 성공 결과를 유지합니다.'}}
 
 let favorites=[];
 try{const saved=JSON.parse(localStorage.getItem('bh-favorites')||'[]');favorites=Array.isArray(saved)?saved.filter(x=>typeof x==='string'):[]}catch{}
@@ -62,10 +63,10 @@ function favoriteButton(ticker){const b=document.createElement('button');b.class
 function decorate(){
  const hc=report?.halt_check;
  const fresh=hc?.status==='ok'&&Date.parse(hc.expires_at)>Date.now();
- $('halt-summary').textContent='거래정지 점검: '+(fresh?'공식 RSS 수신':'조회 대기·실패 또는 만료')+' · 확인 KST '+(hc?.checked_at?kst(hc.checked_at):'—')+' · 실전 후보는 시총·정지 점검 및 최근 15분 IEX 체결 조건 통과 기준입니다. Float·숏·SEC 공급 전체 검증은 미완료입니다.';
+ $('halt-summary').textContent='거래정지 점검: '+(fresh?'공식 RSS 수신':'갱신 지연·만료: 아래 지난 후보는 현재 유효한 실전 신호가 아닙니다')+' · 확인 KST '+(hc?.checked_at?kst(hc.checked_at):'—')+' · 실전 후보는 시총·정지 점검 및 최근 15분 IEX 체결 조건 통과 기준입니다. Float·숏·SEC 공급 전체 검증은 미완료입니다.';
 
  $('verified').setAttribute('aria-pressed',String(!research&&!watch));
- $('result-summary').textContent='수집 완료 '+fmt(report?.coverage?.processed,'종목',0)+' · 검증 대기 목록 '+fmt(report?.watchlist?.length,'종목',0)+'(최대 100개) · 연구용 목록 '+fmt(report?.research_top10?.length,'종목',0)+' · 실전 후보 '+fmt(activeTop10().length,'종목',0)+' — 검증 대기·연구용 종목은 거래정지·공급 상태 확인이 필요합니다. 토스 매수 가능 여부는 사용자가 직접 확인합니다.';
+ $('result-summary').textContent='수집 완료 '+fmt(report?.coverage?.processed,'종목',0)+' · 검증 대기 목록 '+fmt(report?.watchlist?.length,'종목',0)+'(최대 100개) · 연구용 목록 '+fmt(report?.research_top10?.length,'종목',0)+' · 실전 후보 '+fmt(activeTop10().length,'종목',0)+' · 지난 결과 포함 표시 '+fmt(storedTop10().length,'종목',0)+' — 검증 대기·연구용 종목은 거래정지·공급 상태 확인이 필요합니다. 토스 매수 가능 여부는 사용자가 직접 확인합니다.';
  $('header-updated').textContent='마지막 갱신 KST: '+(report?.updated_at?kst(report.updated_at):'데이터 대기');
  $('scan-count').textContent=fmt(report?.coverage?.processed,'종목',0);
  $('research').setAttribute('aria-pressed',String(research));$('watch').setAttribute('aria-pressed',String(watch));
