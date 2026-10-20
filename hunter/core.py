@@ -110,8 +110,8 @@ def engine_scores(stock):
 
 def rank(stocks):
     scored=[{**s,**engine_scores(s)} for s in stocks]
-    # Verified Toss orderability is required for actionable TOP 10.
-    qualified=[s for s in scored if s["candidate"] and s.get("toss_orderable") is True and s["score"] is not None]
+    # Broker orderability is checked by the user and does not gate ranking.
+    qualified=[s for s in scored if s["candidate"] and s["score"] is not None]
     return sorted(qualified,key=lambda s:(-s["score"],s["ticker"]))[:10],scored
 
 def scan_order(symbols, run_id):

@@ -43,15 +43,17 @@ class CoreTests(unittest.TestCase):
         s=engine_scores({"float":1000000,"volume":3000000})
         self.assertTrue(s["scores"]["F"]>0)
         self.assertIsNone(s["scores"]["V"])
-    def test_top10_and_toss_gate(self):
-        def stock(i):
-            return {"ticker":str(i),"toss_orderable":True,"bars":[{"volume":100} for _ in range(50)]+[{"volume":1000}]}
-        items=[stock(i) for i in range(20)]
-        items.append({**stock(100),"toss_orderable":None})
-        top,_=rank(items)
-        self.assertEqual(len(top),10)
-        self.assertTrue(all(s["toss_orderable"] for s in top))
-        self.assertEqual([s["score"] for s in top],sorted([s["score"] for s in top],reverse=True))
+    def test_top10_independent_of_broker_orderability(self):
+        def stock(i, orderable):
+            return {"ticker":str(i),"toss_orderable":orderable,"bars":[{"volume":100} for _ in range(50)]+[{"volume":1000}]}
+        for orderable in (None, False, True):
+            items=[stock(i,orderable) for i in range(20)]
+            top,_=rank(items)
+            self.assertEqual(len(top),10)
+            self.assertEqual([s["ticker"] for s in top],sorted(s["ticker"] for s in items)[:10])
+            self.assertTrue(all(s["toss_orderable"] is orderable for s in top))
+        top,_=rank([{"ticker":"EMPTY","toss_orderable":True}])
+        self.assertEqual(top,[])
     def test_max_score(self):
         self.assertEqual(sum(WEIGHTS.values()),100)
     def test_hubc_claim_not_fixture_fact(self):
