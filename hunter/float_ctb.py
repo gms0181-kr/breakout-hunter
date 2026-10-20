@@ -87,7 +87,7 @@ def combine_float(sources):
     return {"status":"unavailable","display_value":None,"sources":sources}
 def enrich_one(stock):
     ticker=stock["ticker"]
-    exchange={"NASDAQ":"nasdaq","NYSE":"nyse","NYSE American":"amex"}.get(stock.get("exchange"))
+    exchange={"NASDAQ":"nasdaq","NYSE":"nyse","NYSE American":"nyseamerican"}.get(stock.get("exchange"))
     if not exchange:return {"ticker":ticker,"observed_at":datetime.now(timezone.utc).isoformat(),"error":"exchange_not_mapped"}
     base="https://chartexchange.com/symbol/"+exchange+"-"+ticker.lower()+"/"
     a=observe(base,overview,ticker);time.sleep(.15)
@@ -127,6 +127,8 @@ def main():
     for group in ("top10","research_top10","last_top10","watchlist"):
         for stock in report.get(group,[]):ordered.setdefault(stock["ticker"],stock)
     def due(ticker):
+        # Retry source paths corrected after an observed 404; keep successful cache entries.
+        if symbols.get(ticker,{}).get("borrow",{}).get("error")=="HTTP 404":return True
         try:return (datetime.now(timezone.utc)-datetime.fromisoformat(symbols[ticker]["observed_at"])).total_seconds()>900
         except (KeyError,TypeError,ValueError):return True
     targets=[s for t,s in ordered.items() if due(t)][:MAX_SYMBOLS]
