@@ -25,7 +25,7 @@ async def fetch(session,url,headers=None,params=None,text=False):
         except (aiohttp.ClientError,asyncio.TimeoutError,ValueError) as exc:
             error=exc
             await asyncio.sleep(2**attempt)
-    raise RuntimeError(str(error or "provider rate limit"))
+    raise RuntimeError(type(error).__name__ if error else "provider_rate_limit")
 
 async def universe(session):
     results=await asyncio.gather(*[fetch(session,NASDAQ_ROOT+name,text=True) for name in ("nasdaqlisted.txt","otherlisted.txt")],return_exceptions=True)
@@ -55,7 +55,7 @@ async def bars(session,symbols):
     today=datetime.now(timezone.utc)
     for offset in range(0,len(symbols),100):
         group=symbols[offset:offset+100]
-        params={"symbols":",".join(group),"timeframe":"1Day","start":(today-timedelta(days=400)).strftime("%Y-%m-%d"),"end":today.isoformat(),"limit":10000,"adjustment":"split","feed":"iex","sort":"asc"}
+        params={"symbols":",".join(group),"timeframe":"1Day","start":(today-timedelta(days=400)).strftime("%Y-%m-%d"),"end":(today-timedelta(minutes=20)).isoformat(),"limit":10000,"adjustment":"split","feed":"iex","sort":"asc"}
         try:
             while True:
                 data=await fetch(session,"https://data.alpaca.markets/v2/stocks/bars",headers=headers,params=params)
@@ -94,12 +94,26 @@ async def sec_timeline(session,cik):
         return {"status":"공시 목록 수집; 원문/계약 분석 미완료","reviewed":False,"source":url,"timeline":timeline,"evidence":[]}
     except RuntimeError as exc: return {"status":str(exc),"reviewed":False}
 
+async def screener_metadata(session):
+    url="https://api.nasdaq.com/api/screener/stocks"
+    try:
+        data=await fetch(session,url,headers={"User-Agent":"BREAKOUT-HUNTER/1.0"},params={"tableonly":"true","limit":"10000"})
+        rows=(data.get("data") or {}).get("table",{}).get("rows",[])
+        def number(v):
+            try: return float(re.sub(r"[^0-9.\\-]","",str(v)))
+            except (ValueError,TypeError): return None
+        return {r["symbol"]:{"market_cap":number(r.get("marketCap")),"market_cap_source":url,"market_cap_as_of":datetime.now(timezone.utc).isoformat()} for r in rows if r.get("symbol")},[]
+    except (RuntimeError,AttributeError):
+        return {},[{"provider":"Nasdaq screener","error":"시총 메타데이터 접근 실패; 미확인 유지"}]
+
 async def collect(config):
     async with aiohttp.ClientSession() as session:
         stocks,failures=await universe(session)
         symbols=scan_order(stocks,datetime.now(timezone.utc).strftime("%Y-%m-%d"))
         histories,errors=await bars(session,symbols)
         failures+=errors
+        metadata,metadata_errors=await screener_metadata(session)
+        failures+=metadata_errors
         ciks,errors=await sec_index(session)
         failures+=errors
         # Full universe is attempted. SEC secondary coverage is separately counted.
@@ -110,13 +124,29 @@ async def collect(config):
             stock["price_as_of"]=stock["bars"][-1]["time"] if stock["bars"] else None
             stock["change_pct"]=(stock["price"]/stock["bars"][-2]["close"]-1)*100 if len(stock["bars"])>1 else None
             stock.update({"float":None,"outstanding":None,"market_cap":None,"toss_orderable":config.get("toss_orderable",{}).get(symbol),"short":{"status":"연결 필요: ChartExchange/Fintel 라이선스 데이터"},"sec":{"status":"원문 분석 대기","reviewed":False},"price_source":"https://docs.alpaca.markets/docs/historical-stock-data-1","feed":"IEX 부분 거래소 일봉; 통합 거래량 아님","chartexchange":"https://chartexchange.com/symbol/"+symbol.lower()+"/"})
+            stock.update(metadata.get(symbol,{}))
+        # Independent signals select SEC enrichment, not alphabetical order.
+        from .core import engine_scores
+        from .sec import analyze,outstanding_fact
         # Transparent SEC budget; never presented as full SEC scan.
-        priority=sorted((s for s in stocks.values() if s["bars"]),key=lambda s:s["volume"] or 0,reverse=True)
+        priority=sorted((s for s in stocks.values() if s["bars"]),key=lambda s:engine_scores(s)["score"] or 0,reverse=True)
         sec_count=0
         for stock in priority[:config.get("sec_budget",20)]:
             cik=ciks.get(stock["ticker"])
             if cik:
                 stock["sec"]=await sec_timeline(session,cik)
+                stock["sec"]=await analyze(session,cik,stock["sec"],budget=2)
+                fact=await outstanding_fact(session,cik,datetime.now(timezone.utc).isoformat())
+                if fact:
+                    stock["outstanding"]=fact["value"]
+                    stock["outstanding_fact"]=fact
                 sec_count+=1
                 await asyncio.sleep(.3)
-        return list(stocks.values()),{"universe":len(stocks),"attempted":len(symbols) if os.getenv("ALPACA_API_KEY") and os.getenv("ALPACA_API_SECRET") else 0,"processed":sum(bool(s["bars"]) for s in stocks.values()),"universe_complete":not any("source" in e for e in failures),"sec_processed":sec_count,"failures":failures,"market_cap_filter_status":"시가총액 데이터 미연결; eligibility pending","halt_filter_status":"거래정지 데이터 연결 필요"}
+        from .backtest import replay
+        replay_result=await replay(session)
+        try:
+            fx=await fetch(session,"https://api.frankfurter.app/latest",params={"from":"USD","to":"KRW"})
+            config["_fx"]={"rate":fx["rates"]["KRW"],"as_of":fx["date"],"source":"https://www.frankfurter.app/","type":"daily reference, not live"}
+        except (RuntimeError,KeyError): config["_fx"]=None
+        config["_backtest"]=replay_result
+        return list(stocks.values()),{"universe":len(stocks),"attempted":len(symbols) if os.getenv("ALPACA_API_KEY") and os.getenv("ALPACA_API_SECRET") else 0,"processed":sum(bool(s["bars"]) for s in stocks.values()),"universe_complete":not any("source" in e for e in failures),"sec_processed":sec_count,"failures":failures,"market_cap_filter_status":"Nasdaq 시총 수집 "+str(len(metadata))+"개; 미확인 별도 보류","halt_filter_status":"거래정지 데이터 연결 필요"}

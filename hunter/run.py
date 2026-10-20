@@ -9,6 +9,8 @@ from .core import rank
 async def main():
     config=json.loads(Path("config.json").read_text())
     stocks,coverage=await collect(config)
+    replay_result=config.pop("_backtest",{})
+    fx=config.pop("_fx",None)
     # Unknown market cap / halt status cannot silently qualify for the small-cap TOP 10.
     for stock in stocks:
         cap=stock.get("market_cap")
@@ -17,7 +19,15 @@ async def main():
     top,_=rank(eligible)
     _,scored=rank(stocks)
     now=datetime.now(timezone.utc).isoformat()
-    report={"updated_at":now,"status":"partial","coverage":coverage,"top10":top,"watchlist":sorted([s for s in scored if s["candidate"]],key=lambda s:-(s["score"] or 0))[:100],"config":config,"fx":None,"limitations":["EOD IEX feed: no consolidated or real-time volume","Float / CTB / short-interest data not connected","SEC timeline only: legal issuance/free-sale analysis pending","Toss order eligibility unverified unless explicitly evidenced","Market cap and halt filters pending: TOP 10 withheld"],"backtest":{"status":"blocked: point-in-time source snapshots absent","HUBC":[{"date":d,"detected":None,"time":None,"scores":None,"rank":None,"float":None,"volume_ratio":None,"short":None,"sec":None,"reason":"당시 이용 가능했던 검증된 가격/Float/SEC 증거 스냅샷 없음; 사용자 게시글 수치를 사실로 사용하지 않음"} for d in ("2026-10-12","2026-10-14","2026-10-16","2026-10-19")]}}
+    report={"updated_at":now,"status":"partial","coverage":coverage,"top10":top,"watchlist":sorted([s for s in scored if s["candidate"]],key=lambda s:-(s["score"] or 0))[:100],"config":config,"fx":fx,"limitations":["EOD IEX feed: no consolidated or real-time volume","Float / CTB / short-interest data not connected","SEC timeline only: legal issuance/free-sale analysis pending","Toss order eligibility unverified unless explicitly evidenced","Market cap and halt filters pending: TOP 10 withheld"],"backtest":{"status":"blocked: point-in-time source snapshots absent","HUBC":[{"date":d,"detected":None,"time":None,"scores":None,"rank":None,"float":None,"volume_ratio":None,"short":None,"sec":None,"reason":"당시 이용 가능했던 검증된 가격/Float/SEC 증거 스냅샷 없음; 사용자 게시글 수치를 사실로 사용하지 않음"} for d in ("2026-10-12","2026-10-14","2026-10-16","2026-10-19")]}}
+    report["backtest"]=replay_result
+    report["research_top10"]=sorted([s for s in scored if s["candidate"] and s.get("market_cap") is not None and 0<s["market_cap"]<=config["market_cap_max"]],key=lambda s:-(s["score"] or 0))[:10]
+    report["research_top10_status"]="실제 시세·시총 기반 관측점수 순위; 토스 주문/거래정지/Float/숏/공급 검증 대기. 실전 TOP10 아님"
+    report["coverage"]["engine_evaluated"]=len(scored)
+    report["coverage"]["engine_data_available"]={k:sum(s["scores"].get(k) is not None for s in scored) for k in ("V","F","S","R","SEC","EVENT")}
+    try:
+        report["connections"]=json.loads(Path("public/connections.json").read_text())
+    except (FileNotFoundError,ValueError): report["connections"]=None
     Path("public").mkdir(exist_ok=True)
     Path("public/data.json").write_text(json.dumps(report,ensure_ascii=False,allow_nan=False),encoding="utf-8")
     Path("public/hubc-backtest.json").write_text(json.dumps(report["backtest"],ensure_ascii=False,indent=2),encoding="utf-8")

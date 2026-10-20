@@ -63,10 +63,23 @@ def engine_scores(stock):
         scores["F"]=(10 if float_value<=5000000 else 5 if float_value<=10000000 else 0)+min(10,rotation*10)
         if float_value<=5000000 or rotation>=1: signals.append("저유통·회전율형")
     short=stock.get("short") or {}
-    # Require all inputs and comparable timestamps; short volume is never read here.
-    if all(known(short.get(k)) for k in ("ctb","available","short_float","interest_change","days_to_cover")) and short.get("cross_verified") is True and short.get("as_of"):
-        scores["S"]=(6 if short["ctb"]>=100 else 3 if short["ctb"]>=30 else 0)+(4 if short["available"]==0 else 2 if short["available"]<=10000 else 0)+(4 if short["short_float"]>=20 else 0)+(3 if short["interest_change"]>0 else 0)+(3 if short["days_to_cover"]>=3 else 0)
-        if scores["S"]>=10: signals.append("숏 스퀴즈형")
+    # Each verified short component operates independently; absent values stay missing.
+    short_coverage=0
+    if short.get("cross_verified") is True and short.get("as_of"):
+        points=[]
+        if known(short.get("ctb")):
+            points.append(6 if short["ctb"]>=100 else 3 if short["ctb"]>=30 else 0); short_coverage+=6
+        if known(short.get("available")):
+            points.append(4 if short["available"]==0 else 2 if short["available"]<=10000 else 0); short_coverage+=4
+        if known(short.get("short_float")):
+            points.append(4 if short["short_float"]>=20 else 0); short_coverage+=4
+        if known(short.get("interest_change")):
+            points.append(3 if short["interest_change"]>0 else 0); short_coverage+=3
+        if known(short.get("days_to_cover")):
+            points.append(3 if short["days_to_cover"]>=3 else 0); short_coverage+=3
+        if points:
+            scores["S"]=sum(points)
+            if scores["S"]>0: signals.append("숏 스퀴즈형")
     if len(bars)>=64 and all(known(b.get("close")) for b in bars[-64:]) and all(known(b.get("low")) for b in bars[-5:]):
         price=bars[-1]["close"]
         d1=price/bars[-22]["close"]-1
@@ -88,7 +101,7 @@ def engine_scores(stock):
         scores["EVENT"]=5
         signals.append("이벤트 재점화형")
     observed=sum(v for v in scores.values() if v is not None)
-    coverage=sum(WEIGHTS[k] for k,v in scores.items() if v is not None)
+    coverage=sum(short_coverage if k=="S" else WEIGHTS[k] for k,v in scores.items() if v is not None)
     return {"scores":scores,"score":round(observed,2) if coverage else None,
             "confidence":coverage,"missing":[k for k,v in scores.items() if v is None],
             "signals":signals,"metrics":metrics,"rotation":rotation,
