@@ -1,0 +1,29 @@
+name: Enrich float and borrow
+on:
+  push:
+    branches: [main]
+    paths: ['hunter/float_ctb.py', 'tests/test_float_ctb.py', '.github/workflows/float-ctb.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: float-borrow-enrichment
+  cancel-in-progress: false
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m hunter.float_ctb
+      - name: Persist enrichment
+        run: |
+          git config user.name "breakout-hunter-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/float-ctb-probe.json
+          git diff --cached --quiet || git commit -m "Probe public float and borrow sources [skip ci]"
+          git pull --rebase origin main
+          git push
