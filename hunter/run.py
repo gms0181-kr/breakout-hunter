@@ -31,6 +31,13 @@ async def main():
     try:
         report["connections"]=json.loads(Path("public/connections.json").read_text())
     except (FileNotFoundError,ValueError): report["connections"]=None
+    # Retain the last generated candidates as explicitly historical when checks expire.
+    try:
+        prior=json.loads(Path("public/data.json").read_text())
+        report["last_top10"]=prior.get("top10") or prior.get("last_top10",[])
+        report["last_top10_as_of"]=prior.get("ranking_updated_at") if prior.get("top10") else prior.get("last_top10_as_of")
+    except (OSError,ValueError):
+        report["last_top10"]=[]
     Path("public").mkdir(exist_ok=True)
     Path("public/data.json").write_text(json.dumps(report,ensure_ascii=False,allow_nan=False),encoding="utf-8")
     Path("public/hubc-backtest.json").write_text(json.dumps(report["backtest"],ensure_ascii=False,indent=2),encoding="utf-8")
