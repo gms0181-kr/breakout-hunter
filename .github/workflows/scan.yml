@@ -2,7 +2,13 @@ name: Test and collect
 on:
   push:
     branches: [main]
-    paths-ignore: ['public/data.json', 'public/hubc-backtest.json']
+    paths:
+      - 'hunter/**'
+      - 'tests/test*.py'
+      - 'tests/fixtures/**'
+      - 'config.json'
+      - 'requirements.txt'
+      - '.github/workflows/scan.yml'
   workflow_dispatch:
   schedule:
     - cron: '37 22 * * 1-5'
