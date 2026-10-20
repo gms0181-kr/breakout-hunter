@@ -112,6 +112,12 @@ async def collect(config):
         symbols=scan_order(stocks,datetime.now(timezone.utc).strftime("%Y-%m-%d"))
         histories,errors=await bars(session,symbols)
         failures+=errors
+        missing=[symbol for symbol in symbols if not histories.get(symbol)]
+        if missing and os.getenv("ALPACA_API_KEY") and os.getenv("ALPACA_API_SECRET"):
+            retried,retry_errors=await bars(session,missing)
+            failures+=retry_errors
+            histories.update({symbol:items for symbol,items in retried.items() if items})
+            failures += [{"provider":"Alpaca","ticker":symbol,"error":"no_bars_after_retry"} for symbol in missing if not histories.get(symbol)]
         metadata,metadata_errors=await screener_metadata(session)
         failures+=metadata_errors
         ciks,errors=await sec_index(session)
