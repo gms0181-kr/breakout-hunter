@@ -1,0 +1,20 @@
+{
+  "tested_at": "2026-10-20T17:49:58.681647+00:00",
+  "providers": {
+    "alpaca": {
+      "http_status": 200,
+      "status": "ok",
+      "records": 7
+    },
+    "sec_submissions": {
+      "http_status": 200,
+      "status": "ok",
+      "records": 1001
+    },
+    "sec_tickers": {
+      "http_status": 200,
+      "status": "ok",
+      "records": 10443
+    }
+  }
+}

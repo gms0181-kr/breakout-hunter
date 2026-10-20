@@ -1,53 +1,947 @@
 {
-  "status": "blocked: point-in-time source snapshots absent",
+  "status": "partial raw-price reconstruction; historical all-market rank unavailable",
   "HUBC": [
     {
       "date": "2026-10-12",
+      "as_of": "2026-10-12T20:00:00+00:00",
       "detected": null,
       "time": null,
-      "scores": null,
       "rank": null,
       "float": null,
-      "volume_ratio": null,
       "short": null,
-      "sec": null,
-      "reason": "당시 이용 가능했던 검증된 가격/Float/SEC 증거 스냅샷 없음; 사용자 게시글 수치를 사실로 사용하지 않음"
+      "scores": null,
+      "volume_ratio": null,
+      "sec": {
+        "reviewed": false,
+        "timeline": [
+          {
+            "form": "6-K",
+            "filed": "2026-09-28",
+            "accepted": "2026-09-28T14:06:18.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026103684/ea0306787-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-09-17",
+            "accepted": "2026-09-18T00:15:01.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026100960/ea0305812-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-09-08",
+            "accepted": "2026-09-09T00:32:51.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026098059/ea0304870-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-08-04",
+            "accepted": "2026-08-05T00:35:29.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026085224/ea0300612-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-08-04",
+            "accepted": "2026-08-05T00:15:01.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026085197/ea0300566-6k_hub.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-08-04",
+            "accepted": "2026-08-04T14:42:52.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026084887/ea0299062-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-08-03",
+            "accepted": "2026-08-03T15:53:43.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026084253/ea0300205-6k_hub.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "20-F",
+            "filed": "2026-07-17",
+            "accepted": "2026-07-18T01:00:41.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026079236/ea0297580-20f_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-07-01",
+            "accepted": "2026-07-01T16:40:10.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026074019/ea0296630-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-06-03",
+            "accepted": "2026-06-04T00:15:02.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026064732/ea0293423-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-05-21",
+            "accepted": "2026-05-22T00:05:00.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026060034/ea0291821-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-04-20",
+            "accepted": "2026-04-20T17:09:45.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026045384/ea0286944-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-04-13",
+            "accepted": "2026-04-14T00:58:04.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026043044/ea0286171-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-04-07",
+            "accepted": "2026-04-07T23:30:53.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026040993/ea0285404-01.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-04-01",
+            "accepted": "2026-04-02T00:15:02.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026038522/ea0284589-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-03-31",
+            "accepted": "2026-03-31T17:28:15.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026036969/ea0284186-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-01-27",
+            "accepted": "2026-01-27T18:58:32.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026007982/ea0274161-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-01-02",
+            "accepted": "2026-01-03T02:01:26.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026000444/ea0271525-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-12-31",
+            "accepted": "2026-01-01T00:36:50.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025127021/ea0271427-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-12-16",
+            "accepted": "2025-12-17T02:43:03.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025122306/ea0269979-01.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-11-14",
+            "accepted": "2025-11-14T17:15:49.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025110346/ea0265663-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-11-10",
+            "accepted": "2025-11-11T02:52:34.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025108269/ea0264910-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-09-03",
+            "accepted": "2025-09-04T00:09:49.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025084039/ea0255848-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "F-1",
+            "filed": "2025-09-03",
+            "accepted": "2025-09-03T03:43:22.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025083622/ea0254687-f1_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-08-12",
+            "accepted": "2025-08-12T16:36:43.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025074658/ea0252713-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-06-18",
+            "accepted": "2025-06-19T00:48:51.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025055683/ea0246238-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-06-12",
+            "accepted": "2025-06-12T17:23:40.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025053613/ea0245537-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "20-F",
+            "filed": "2025-05-01",
+            "accepted": "2025-05-01T14:48:02.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025038038/ea0237776-20f_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-04-04",
+            "accepted": "2025-04-05T00:05:02.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025028996/ea0236735-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          }
+        ]
+      },
+      "reason": "일봉 수집됨; 병합 당시 기준 검증·통합 거래량·과거 전체시장 스냅샷 부족으로 V/R 점수 및 탐지 시각/순위 보류",
+      "regular_session_minute_count": 1,
+      "bars_count": 276,
+      "observed_daily_bar": {
+        "t": "2026-10-12T13:30:00+00:00",
+        "o": 0.9513,
+        "h": 0.9513,
+        "l": 0.9513,
+        "c": 0.9513,
+        "v": 218
+      },
+      "source": "Alpaca IEX raw regular-session minute bars; historical baseline daily bars not scored",
+      "lookahead_guard": "end/asof=당일; raw prices; 미래 공시 제외. 공급처의 사후 정정 여부 미검증"
     },
     {
       "date": "2026-10-14",
+      "as_of": "2026-10-14T20:00:00+00:00",
       "detected": null,
       "time": null,
-      "scores": null,
       "rank": null,
       "float": null,
-      "volume_ratio": null,
       "short": null,
-      "sec": null,
-      "reason": "당시 이용 가능했던 검증된 가격/Float/SEC 증거 스냅샷 없음; 사용자 게시글 수치를 사실로 사용하지 않음"
+      "scores": null,
+      "volume_ratio": null,
+      "sec": {
+        "reviewed": false,
+        "timeline": [
+          {
+            "form": "6-K",
+            "filed": "2026-09-28",
+            "accepted": "2026-09-28T14:06:18.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026103684/ea0306787-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-09-17",
+            "accepted": "2026-09-18T00:15:01.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026100960/ea0305812-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-09-08",
+            "accepted": "2026-09-09T00:32:51.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026098059/ea0304870-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-08-04",
+            "accepted": "2026-08-05T00:35:29.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026085224/ea0300612-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-08-04",
+            "accepted": "2026-08-05T00:15:01.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026085197/ea0300566-6k_hub.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-08-04",
+            "accepted": "2026-08-04T14:42:52.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026084887/ea0299062-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-08-03",
+            "accepted": "2026-08-03T15:53:43.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026084253/ea0300205-6k_hub.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "20-F",
+            "filed": "2026-07-17",
+            "accepted": "2026-07-18T01:00:41.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026079236/ea0297580-20f_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-07-01",
+            "accepted": "2026-07-01T16:40:10.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026074019/ea0296630-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-06-03",
+            "accepted": "2026-06-04T00:15:02.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026064732/ea0293423-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-05-21",
+            "accepted": "2026-05-22T00:05:00.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026060034/ea0291821-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-04-20",
+            "accepted": "2026-04-20T17:09:45.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026045384/ea0286944-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-04-13",
+            "accepted": "2026-04-14T00:58:04.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026043044/ea0286171-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-04-07",
+            "accepted": "2026-04-07T23:30:53.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026040993/ea0285404-01.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-04-01",
+            "accepted": "2026-04-02T00:15:02.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026038522/ea0284589-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-03-31",
+            "accepted": "2026-03-31T17:28:15.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026036969/ea0284186-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-01-27",
+            "accepted": "2026-01-27T18:58:32.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026007982/ea0274161-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-01-02",
+            "accepted": "2026-01-03T02:01:26.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026000444/ea0271525-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-12-31",
+            "accepted": "2026-01-01T00:36:50.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025127021/ea0271427-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-12-16",
+            "accepted": "2025-12-17T02:43:03.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025122306/ea0269979-01.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-11-14",
+            "accepted": "2025-11-14T17:15:49.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025110346/ea0265663-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-11-10",
+            "accepted": "2025-11-11T02:52:34.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025108269/ea0264910-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-09-03",
+            "accepted": "2025-09-04T00:09:49.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025084039/ea0255848-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "F-1",
+            "filed": "2025-09-03",
+            "accepted": "2025-09-03T03:43:22.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025083622/ea0254687-f1_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-08-12",
+            "accepted": "2025-08-12T16:36:43.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025074658/ea0252713-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-06-18",
+            "accepted": "2025-06-19T00:48:51.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025055683/ea0246238-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-06-12",
+            "accepted": "2025-06-12T17:23:40.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025053613/ea0245537-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "20-F",
+            "filed": "2025-05-01",
+            "accepted": "2025-05-01T14:48:02.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025038038/ea0237776-20f_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-04-04",
+            "accepted": "2025-04-05T00:05:02.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025028996/ea0236735-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          }
+        ]
+      },
+      "reason": "일봉 수집됨; 병합 당시 기준 검증·통합 거래량·과거 전체시장 스냅샷 부족으로 V/R 점수 및 탐지 시각/순위 보류",
+      "regular_session_minute_count": 29,
+      "bars_count": 277,
+      "observed_daily_bar": {
+        "t": "2026-10-14T13:30:00+00:00",
+        "o": 0.53,
+        "h": 0.53,
+        "l": 0.363,
+        "c": 0.3746,
+        "v": 13013
+      },
+      "source": "Alpaca IEX raw regular-session minute bars; historical baseline daily bars not scored",
+      "lookahead_guard": "end/asof=당일; raw prices; 미래 공시 제외. 공급처의 사후 정정 여부 미검증"
     },
     {
       "date": "2026-10-16",
+      "as_of": "2026-10-16T20:00:00+00:00",
       "detected": null,
       "time": null,
-      "scores": null,
       "rank": null,
       "float": null,
-      "volume_ratio": null,
       "short": null,
-      "sec": null,
-      "reason": "당시 이용 가능했던 검증된 가격/Float/SEC 증거 스냅샷 없음; 사용자 게시글 수치를 사실로 사용하지 않음"
+      "scores": null,
+      "volume_ratio": null,
+      "sec": {
+        "reviewed": false,
+        "timeline": [
+          {
+            "form": "6-K",
+            "filed": "2026-10-13",
+            "accepted": "2026-10-14T00:25:00.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026109036/ea0308497-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-09-28",
+            "accepted": "2026-09-28T14:06:18.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026103684/ea0306787-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-09-17",
+            "accepted": "2026-09-18T00:15:01.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026100960/ea0305812-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-09-08",
+            "accepted": "2026-09-09T00:32:51.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026098059/ea0304870-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-08-04",
+            "accepted": "2026-08-05T00:35:29.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026085224/ea0300612-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-08-04",
+            "accepted": "2026-08-05T00:15:01.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026085197/ea0300566-6k_hub.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-08-04",
+            "accepted": "2026-08-04T14:42:52.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026084887/ea0299062-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-08-03",
+            "accepted": "2026-08-03T15:53:43.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026084253/ea0300205-6k_hub.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "20-F",
+            "filed": "2026-07-17",
+            "accepted": "2026-07-18T01:00:41.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026079236/ea0297580-20f_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-07-01",
+            "accepted": "2026-07-01T16:40:10.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026074019/ea0296630-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-06-03",
+            "accepted": "2026-06-04T00:15:02.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026064732/ea0293423-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-05-21",
+            "accepted": "2026-05-22T00:05:00.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026060034/ea0291821-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-04-20",
+            "accepted": "2026-04-20T17:09:45.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026045384/ea0286944-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-04-13",
+            "accepted": "2026-04-14T00:58:04.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026043044/ea0286171-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-04-07",
+            "accepted": "2026-04-07T23:30:53.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026040993/ea0285404-01.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-04-01",
+            "accepted": "2026-04-02T00:15:02.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026038522/ea0284589-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-03-31",
+            "accepted": "2026-03-31T17:28:15.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026036969/ea0284186-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-01-27",
+            "accepted": "2026-01-27T18:58:32.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026007982/ea0274161-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-01-02",
+            "accepted": "2026-01-03T02:01:26.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026000444/ea0271525-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-12-31",
+            "accepted": "2026-01-01T00:36:50.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025127021/ea0271427-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-12-16",
+            "accepted": "2025-12-17T02:43:03.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025122306/ea0269979-01.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-11-14",
+            "accepted": "2025-11-14T17:15:49.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025110346/ea0265663-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-11-10",
+            "accepted": "2025-11-11T02:52:34.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025108269/ea0264910-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-09-03",
+            "accepted": "2025-09-04T00:09:49.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025084039/ea0255848-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "F-1",
+            "filed": "2025-09-03",
+            "accepted": "2025-09-03T03:43:22.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025083622/ea0254687-f1_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-08-12",
+            "accepted": "2025-08-12T16:36:43.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025074658/ea0252713-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-06-18",
+            "accepted": "2025-06-19T00:48:51.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025055683/ea0246238-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-06-12",
+            "accepted": "2025-06-12T17:23:40.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025053613/ea0245537-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "20-F",
+            "filed": "2025-05-01",
+            "accepted": "2025-05-01T14:48:02.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025038038/ea0237776-20f_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-04-04",
+            "accepted": "2025-04-05T00:05:02.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025028996/ea0236735-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          }
+        ]
+      },
+      "reason": "일봉 수집됨; 병합 당시 기준 검증·통합 거래량·과거 전체시장 스냅샷 부족으로 V/R 점수 및 탐지 시각/순위 보류",
+      "regular_session_minute_count": 18,
+      "bars_count": 277,
+      "observed_daily_bar": {
+        "t": "2026-10-16T13:30:00+00:00",
+        "o": 0.4102,
+        "h": 0.5299,
+        "l": 0.372,
+        "c": 0.3912,
+        "v": 9132
+      },
+      "source": "Alpaca IEX raw regular-session minute bars; historical baseline daily bars not scored",
+      "lookahead_guard": "end/asof=당일; raw prices; 미래 공시 제외. 공급처의 사후 정정 여부 미검증"
     },
     {
       "date": "2026-10-19",
+      "as_of": "2026-10-19T20:00:00+00:00",
       "detected": null,
       "time": null,
-      "scores": null,
       "rank": null,
       "float": null,
-      "volume_ratio": null,
       "short": null,
-      "sec": null,
-      "reason": "당시 이용 가능했던 검증된 가격/Float/SEC 증거 스냅샷 없음; 사용자 게시글 수치를 사실로 사용하지 않음"
+      "scores": null,
+      "volume_ratio": null,
+      "sec": {
+        "reviewed": false,
+        "timeline": [
+          {
+            "form": "6-K",
+            "filed": "2026-10-13",
+            "accepted": "2026-10-14T00:25:00.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026109036/ea0308497-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-09-28",
+            "accepted": "2026-09-28T14:06:18.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026103684/ea0306787-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-09-17",
+            "accepted": "2026-09-18T00:15:01.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026100960/ea0305812-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-09-08",
+            "accepted": "2026-09-09T00:32:51.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026098059/ea0304870-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-08-04",
+            "accepted": "2026-08-05T00:35:29.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026085224/ea0300612-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-08-04",
+            "accepted": "2026-08-05T00:15:01.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026085197/ea0300566-6k_hub.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-08-04",
+            "accepted": "2026-08-04T14:42:52.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026084887/ea0299062-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-08-03",
+            "accepted": "2026-08-03T15:53:43.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026084253/ea0300205-6k_hub.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "20-F",
+            "filed": "2026-07-17",
+            "accepted": "2026-07-18T01:00:41.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026079236/ea0297580-20f_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-07-01",
+            "accepted": "2026-07-01T16:40:10.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026074019/ea0296630-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-06-03",
+            "accepted": "2026-06-04T00:15:02.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026064732/ea0293423-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-05-21",
+            "accepted": "2026-05-22T00:05:00.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026060034/ea0291821-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-04-20",
+            "accepted": "2026-04-20T17:09:45.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026045384/ea0286944-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-04-13",
+            "accepted": "2026-04-14T00:58:04.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026043044/ea0286171-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-04-07",
+            "accepted": "2026-04-07T23:30:53.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026040993/ea0285404-01.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-04-01",
+            "accepted": "2026-04-02T00:15:02.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026038522/ea0284589-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-03-31",
+            "accepted": "2026-03-31T17:28:15.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026036969/ea0284186-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-01-27",
+            "accepted": "2026-01-27T18:58:32.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026007982/ea0274161-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2026-01-02",
+            "accepted": "2026-01-03T02:01:26.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390026000444/ea0271525-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-12-31",
+            "accepted": "2026-01-01T00:36:50.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025127021/ea0271427-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-12-16",
+            "accepted": "2025-12-17T02:43:03.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025122306/ea0269979-01.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-11-14",
+            "accepted": "2025-11-14T17:15:49.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025110346/ea0265663-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-11-10",
+            "accepted": "2025-11-11T02:52:34.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025108269/ea0264910-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-09-03",
+            "accepted": "2025-09-04T00:09:49.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025084039/ea0255848-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "F-1",
+            "filed": "2025-09-03",
+            "accepted": "2025-09-03T03:43:22.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025083622/ea0254687-f1_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-08-12",
+            "accepted": "2025-08-12T16:36:43.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025074658/ea0252713-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-06-18",
+            "accepted": "2025-06-19T00:48:51.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025055683/ea0246238-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-06-12",
+            "accepted": "2025-06-12T17:23:40.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025053613/ea0245537-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "20-F",
+            "filed": "2025-05-01",
+            "accepted": "2025-05-01T14:48:02.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025038038/ea0237776-20f_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          },
+          {
+            "form": "6-K",
+            "filed": "2025-04-04",
+            "accepted": "2025-04-05T00:05:02.000Z",
+            "source": "https://www.sec.gov/Archives/edgar/data/1905660/000121390025028996/ea0236735-6k_hubcyber.htm",
+            "status": "원문·첨부계약 검토 필요; 공급 상태 미확인"
+          }
+        ]
+      },
+      "reason": "일봉 수집됨; 병합 당시 기준 검증·통합 거래량·과거 전체시장 스냅샷 부족으로 V/R 점수 및 탐지 시각/순위 보류",
+      "regular_session_minute_count": 22,
+      "bars_count": 276,
+      "observed_daily_bar": {
+        "t": "2026-10-19T13:30:00+00:00",
+        "o": 0.3952,
+        "h": 0.4147,
+        "l": 0.3444,
+        "c": 0.3444,
+        "v": 3627
+      },
+      "source": "Alpaca IEX raw regular-session minute bars; historical baseline daily bars not scored",
+      "lookahead_guard": "end/asof=당일; raw prices; 미래 공시 제외. 공급처의 사후 정정 여부 미검증"
     }
   ]
 }
