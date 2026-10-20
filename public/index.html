@@ -26,7 +26,7 @@ function sourceObservation(s){const a=enrichment?.symbols?.[s.ticker],b=s.enrich
 function floatCell(s){
  const f=sourceObservation(s)?.float;
  if(!f)return '<span>수집 대기</span>';
- const labels={matched:'2개 출처 일치',single_source:'단일 출처 확인',conflict:'출처 수치 충돌',unavailable:'공개 값 없음'};
+ const labels={matched:'2개 출처 대조 · 차이 5% 이내',single_source:'단일 출처 확인',conflict:'출처 수치 충돌',unavailable:'공개 값 없음'};
  const values=f.status==='conflict'?(f.sources||[]).filter(x=>x.value!=null).map(x=>fmt(x.value,'주',0)).join(' / '):f.display_value!=null?(f.approximate?'약 ':'')+fmt(f.display_value,'주',0):'—';
  const source=(f.sources||[]).filter(x=>x.value!=null).map(x=>link(x.source,x.source.includes('finviz')?'Finviz':'ChartExchange')).join(' · ');
  const errors=(f.sources||[]).filter(x=>x.error).map(x=>x.error).join(' / ');
@@ -55,7 +55,7 @@ function draw(){
  list=list.filter(s=>s.market_cap==null||s.market_cap<=cap);
  $('rows').innerHTML=list.length?list.map((s,i)=>'<tr><td>'+(i+1)+'</td><td><button data-ticker="'+escapeHtml(s.ticker)+'">'+escapeHtml(s.ticker)+'</button><br><small>'+escapeHtml(s.name)+'</small></td><td>'+fmt(s.price,'달러')+'<br><small>'+(report.fx?fmt(s.price*report.fx.rate,'원'):'환율 연결 필요')+'</small></td><td>'+fmt(s.change_pct,'%')+'</td><td>'+fmt(s.metrics?.ratios?.['20'],'배')+'</td><td data-float-cell>'+floatCell(s)+'</td><td data-ctb-cell>'+borrowCell(s)+'</td><td>'+fmt(s.score,'점')+' / '+fmt(s.confidence,'%')+'</td><td>'+escapeHtml((s.signals||[]).join(' · '))+'</td><td>'+escapeHtml(haltLabel(s))+'<br><small>'+(s.halt_check?.checked_at?escapeHtml(kst(s.halt_check.checked_at)):'자료 대기')+'</small></td><td>'+escapeHtml(s.price_as_of||'미확인')+'</td></tr>').join(''):'<tr><td colspan="11">'+(research||watch?'현재 시총 필터에 해당하는 후보가 없습니다.':'현재 유효한 실전 후보가 없습니다. 정지 자료·체결 확인 시각과 검증 대기 후보를 확인하세요.')+'</td></tr>';
  document.querySelectorAll('[data-ticker]').forEach(b=>b.onclick=()=>detail(list.find(s=>s.ticker===b.dataset.ticker)));
- $('limits').innerHTML=(report.limitations||[]).map(x=>'<p>'+escapeHtml(x)+'</p>').join('');
+ $('limits').innerHTML=(report.limitations||[]).filter(x=>!enrichment.updated_at||!x.includes('Float / CTB / short-interest data not connected')).map(x=>'<p>'+escapeHtml(x)+'</p>').join('');
  $('failures').textContent=JSON.stringify(c.failures||[],null,2);
  $('backtest').textContent=JSON.stringify(report.backtest||{},null,2);
  decorate();
