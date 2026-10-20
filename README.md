@@ -1,49 +1,60 @@
 # BREAKOUT HUNTER 1.0
 
-Independent development in gms0181-kr/breakout-hunter. Never modifies Surge Radar.
+Independent repository: https://github.com/gms0181-kr/breakout-hunter
+Published dashboard: https://gms0181-kr.github.io/breakout-hunter/
+Surge Radar repository, data, hosting and settings are outside this project's modification scope.
 
-## Status
-Initial implementation, NOT a completed production system. Execution and deployment must be verified separately.
-The dashboard deliberately has no simulated prices, CTB, float, TOP 10, or historical detection results.
+## Verified collection — 2026-10-20 17:55:33 UTC / 2026-10-21 02:55:33 KST
+- Alpaca IEX bars, SEC submissions and SEC ticker index: HTTP 200. No credential values are persisted in public results.
+- Complete directory request universe: 5,713 securities after conservative security-name/ETF filtering.
+- Price histories returned: 5,710. Three symbols returned no history; subsequent scans retry and explicitly record no-bars responses.
+- V scores available: 5,627; R scores: 5,631.
+- Nasdaq screener market-cap metadata returned: 6,986 records, joined by ticker.
+- SEC enrichment: 19 candidates, 77 original/attachment documents retrieved and hashed.
+- SEC keywords indicate potential risk, never proof of legal issuance or market sale.
+- Float / licensed borrow and short-interest feeds unavailable: F and S remain null on this run.
+- Research TOP 10 generated from real V/R observations and current market-cap metadata, with 40(%) component coverage.
+- Actionable TOP 10 withheld: Toss orderability and halt status are unverified.
+- FX: daily USD/KRW reference rate from Frankfurter, not an executable or live exchange rate.
+- HUBC: four historical regular-session IEX minute reconstructions stored. Split reconciliation, consolidated volume, historic float/short snapshots and historic all-market ranks remain unavailable; detection scores/ranks are not invented.
 
 ## Run
 Python 3.12+
 ~~~sh
 python -m pip install -r requirements.txt
 python -m unittest discover -s tests -v
+python -m hunter.probe
 python -m hunter.run
 python -m http.server 8000 --directory public
 ~~~
 
-## Data
-NASDAQ Trader official complete listing files feed the universe. Name-based security filtering is conservative and requires exception review.
-Alpaca credentials provide split-adjusted **IEX-only** daily bars; this is not consolidated volume and cannot validate a consolidated-volume HUBC claim.
-Configure repository secrets ALPACA_API_KEY, ALPACA_API_SECRET, SEC_USER_AGENT (organization + contact email).
-No credentials are stored in source. No paid signup is performed automatically.
-ChartExchange/Fintel licensed CTB, borrow availability, short interest, verified float and FX remain disconnected.
+## Configuration / credentials
+GitHub Actions secrets: ALPACA_API_KEY, ALPACA_API_SECRET, SEC_USER_AGENT (organization and contact email).
+Never print credential values. Connection probes log only provider status, HTTP code and record counts.
+Market-cap threshold, SEC enrichment budget and evidence-based Toss orderability overrides are in config.json.
+The dashboard's cap input filters displayed rows; it does not modify server configuration.
 
-SEC adapter collects filing metadata and original-document links at a conservative rate.
-It does NOT yet parse attachments or determine legal free-sale dates, and never labels the absence of a filing as a dilution gap.
-The scoring boundary requires explicit reviewed evidence and complete supply coverage for a gap score.
-Ownership blockers are not supply caps. Registration is not issuance, exercise, or market sale.
+## Methods and limits
+NASDAQ Trader supplies the complete listing directory. Security-type filtering is name-based and requires exception auditing.
+IEX-only split-adjusted daily bars are not consolidated market volume or real-time quotes. Missing data is null.
+V/F/S/R operate independently; no historic-recommendation bonus.
+Exact formulas are in hunter/core.py and the dashboard. Observed points are not renormalized to 100; component coverage is shown.
+Reported outstanding shares remain separate from float and retain SEC fact dates. Unreconciled split adjustments are disclosed.
+SEC analysis discovers forms, original documents, selected attachments and potential financing clauses. It does not yet reconcile all security IDs, remaining warrant balances, blockers, closing conditions or legal free-sale dates.
+All eight supply stages stay unconfirmed without reviewed evidence. No keyword or absent filing earns a dilution-gap score.
+HUBC raw minute data ends strictly before 16:00 ET. Future filings are withheld; certified point-in-time replay is incomplete.
 
-## Scoring / eligibility
-See hunter/core.py and the dashboard for exact component formulas.
-Unknown components are null, confidence is the sum of observed component weights, and raw known points are not renormalized.
-V/F/S/R qualify independently. No historical-recommendation bonus.
-Market cap and active-trading eligibility remain unconnected: final TOP 10 is withheld.
-Verified Toss orderability is also required for the actionable TOP 10; the pending watchlist is separate.
-The market cap limit is in config.json. UI changes filter current observed rows only, not server configuration.
+## Automatic refresh / persistence
+- GitHub Actions scheduled collection: 22:37 UTC Monday–Friday (07:37 KST next day). A scheduled event has not yet been observed; schedules can be delayed.
+- Source changes to the scanner also trigger collection. Stale runs are cancelled.
+- Results commit to public JSON; SQLite evidence is retained as an Actions artifact. Historical snapshots are not a licensed full-market point-in-time database.
+- Dashboard polls stored JSON every 60 seconds. This does not make upstream IEX daily data real-time.
+- Successful collection triggers independent GitHub Pages deployment.
 
-## Scheduling / persistence
-GitHub Actions attempts daily 22:37 UTC weekday scans (18:37 EDT / 07:37 KST next day; ET changes with DST).
-Actions schedules can be delayed; this is not a real-time SLA. The page polls saved JSON every 60 seconds.
-Observed coverage, errors and retry failures are published; SQLite snapshots are retained in workflow artifacts.
-SEC secondary review budget is shown independently; partial scans are never labeled comprehensive.
-There is no connected hosting deployment yet.
+## QA
+Software tests cover volume baselines, missingness, splits, float/O/S separation, short-volume separation, supply evidence gates, duplicate stages, point-in-time guards, scan-order diversity, ranking, independent short components and retry failures.
+Production browser QA checks desktop and mobile layout, actual JSON loading, JavaScript errors and detail opening; production verification additionally waits for an actual automatic data request.
+See Actions run conclusions and artifacts for executed test counts and screenshots. These software tests are not a certified historical strategy backtest.
 
-## Tests and limitations
-17 unit tests cover averages, missingness, splits, float/O/S, short volume, supply stages, deduplication, point-in-time filters, order diversity, independent engines, rankings and a HUBC claim fixture.
-These are software unit tests, not a completed historical HUBC replay or a certified full-universe scanner test.
-HUBC 2026-10-12/14/16/19 historical snapshots and comparison success/failure cases remain unavailable. No detection time or rank is invented.
-No browser/device or deployed-URL test has been performed.
+## Incomplete
+Verified Float, licensed ChartExchange/Fintel CTB/borrow/short interest, all-stage SEC legal supply reconciliation, verified Toss orderability, current halt-state validation, complete HUBC point-in-time ranks, success/failure comparison cases, and intraday consolidated-price coverage.
