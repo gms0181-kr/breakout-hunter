@@ -40,7 +40,7 @@ async def main():
             assert not errors,errors
             overflow=await page.evaluate("document.documentElement.scrollWidth > innerWidth")
             assert not overflow,"page horizontal overflow"
-            evidence.append({"viewport":name,"http":response.status,"javascript_errors":errors,"passed":True,"automatic_refresh_verified":refresh_verified})
+            evidence.append({"viewport":name,"http":response.status,"javascript_errors":errors,"passed":True,"automatic_refresh_verified":refresh_verified,"active_candidates":valid,"halt_checked_at":await page.evaluate("report.halt_check?.checked_at || null")})
             await page.close()
         await browser.close()
     Path("qa/result.json").write_text(json.dumps(evidence,indent=2))
