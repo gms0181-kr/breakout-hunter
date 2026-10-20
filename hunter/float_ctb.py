@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 from .core import known
 
 CACHE=Path("public/enrichment.json")
-MAX_SYMBOLS=30
+MAX_SYMBOLS=120
 class Text(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True);self.skip=0;self.parts=[]
