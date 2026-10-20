@@ -55,7 +55,7 @@ def finviz(html,ticker):
             "source_as_of":None,"date_note":"공급자가 Float 기준일을 명시하지 않음"}
 def borrow(html,ticker):
     identity(html,ticker);text=plain(html)
-    m=re.search(r"As of\s+(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} [AP]M (?:EDT|EST)),\s*there were\s+([\d,]+)\s+shares available with a fee of\s+([\d.]+)\s*%",text)
+    m=re.search(r"As of\s+(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} [AP]M (?:EDT|EST))\s*,\s*there were\s+([\d,]+)\s+shares available with a fee of\s+([\d.]+)\s*%",text)
     if not m:return {"ctb":None,"available":None,"status":"공개 CTB 요약 값 없음"}
     stamp=datetime.strptime(m[1][:-4],"%Y-%m-%d %I:%M:%S %p").replace(tzinfo=ZoneInfo("America/New_York"))
     if stamp.tzname()!=m[1][-3:]:raise ValueError("borrow_timezone_mismatch")
