@@ -17,6 +17,13 @@ async def main():
             assert response and response.status==200
             await page.wait_for_function("report !== null",timeout=30000)
             assert await page.title()=="BREAKOUT HUNTER 1.0"
+            refresh_verified=False
+            if name=="desktop":
+                async with page.expect_response(lambda r: "/data.json?t=" in r.url,timeout=75000) as refreshed:
+                    await page.wait_for_timeout(62000)
+                refresh_response=await refreshed.value
+                assert refresh_response.status==200
+                refresh_verified=True
             await page.locator("#research").click()
             await page.screenshot(path=f"qa/{name}.png",full_page=True)
             buttons=page.locator("[data-ticker]")
@@ -27,7 +34,7 @@ async def main():
             assert not errors,errors
             overflow=await page.evaluate("document.documentElement.scrollWidth > innerWidth")
             assert not overflow,"page horizontal overflow"
-            evidence.append({"viewport":name,"http":response.status,"javascript_errors":errors,"passed":True})
+            evidence.append({"viewport":name,"http":response.status,"javascript_errors":errors,"passed":True,"automatic_refresh_verified":refresh_verified})
             await page.close()
         await browser.close()
     Path("qa/result.json").write_text(json.dumps(evidence,indent=2))
