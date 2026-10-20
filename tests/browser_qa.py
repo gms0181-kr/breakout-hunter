@@ -44,6 +44,14 @@ async def main():
             await page.evaluate("report=window.originalReport;delete window.originalReport;draw()")
             if valid:
                 assert await page.locator("#rows").inner_text()
+            float_cells=await page.locator("#rows [data-float-value=yes]").count()
+            ctb_cells=await page.locator("#rows [data-ctb-value=yes]").count()
+            cache_symbols=await page.evaluate("Object.keys(enrichment.symbols||{}).length")
+            if cache_symbols and stored:
+                expected_float=await page.evaluate("storedTop10().filter(s=>sourceObservation(s)?.float?.display_value!=null).length")
+                expected_ctb=await page.evaluate("storedTop10().filter(s=>sourceObservation(s)?.borrow?.ctb!=null).length")
+                assert float_cells==expected_float
+                assert ctb_cells==expected_ctb
             await page.locator("#research").click()
             await page.screenshot(path=f"qa/{name}.png",full_page=True)
             buttons=page.locator("[data-ticker]")
@@ -54,7 +62,7 @@ async def main():
             assert not errors,errors
             overflow=await page.evaluate("document.documentElement.scrollWidth > innerWidth")
             assert not overflow,"page horizontal overflow"
-            evidence.append({"viewport":name,"http":response.status,"javascript_errors":errors,"passed":True,"automatic_refresh_verified":refresh_verified,"active_candidates":valid,"halt_checked_at":await page.evaluate("report.halt_check?.checked_at || null")})
+            evidence.append({"viewport":name,"http":response.status,"javascript_errors":errors,"passed":True,"automatic_refresh_verified":refresh_verified,"active_candidates":valid,"float_cells":float_cells,"ctb_cells":ctb_cells,"halt_checked_at":await page.evaluate("report.halt_check?.checked_at || null")})
             await page.close()
         await browser.close()
     Path("qa/result.json").write_text(json.dumps(evidence,indent=2))

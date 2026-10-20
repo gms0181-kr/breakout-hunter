@@ -165,6 +165,8 @@ def refresh_report():
     path=Path("public/data.json")
     report=json.loads(path.read_text())
     stocks=list({s["ticker"]:s for group in ("watchlist","research_top10","top10") for s in report.get(group,[])}.values())
+    from .float_ctb import apply_cached
+    apply_cached(stocks)
     feed=check_stocks(stocks,report.get("config",{}).get("market_cap_max",2000000000))
     top,_=rank([s for s in stocks if s["eligibility"]=="eligible"])
     checked={s["ticker"]:s for s in stocks}

@@ -11,13 +11,15 @@ async def main():
     stocks,coverage=await collect(config)
     replay_result=config.pop("_backtest",{})
     fx=config.pop("_fx",None)
+    from .float_ctb import apply_cached
+    apply_cached(stocks)
     from .halts import check_stocks
     halt_feed=check_stocks(stocks,config["market_cap_max"])
     eligible=[s for s in stocks if s["eligibility"]=="eligible"]
     top,_=rank(eligible)
     _,scored=rank(stocks)
     now=datetime.now(timezone.utc).isoformat()
-    report={"updated_at":now,"status":"partial","coverage":coverage,"top10":top,"watchlist":sorted([s for s in scored if s["candidate"]],key=lambda s:-(s["score"] or 0))[:100],"config":config,"fx":fx,"limitations":["EOD IEX feed: no consolidated or real-time volume","Float / CTB / short-interest data not connected","SEC timeline only: legal issuance/free-sale analysis pending","Toss orderability excluded from ranking; user checks broker availability","시총·정지 점검 후보: Float·숏·SEC 공급 상태 전체 검증을 의미하지 않음"],"backtest":{"status":"blocked: point-in-time source snapshots absent","HUBC":[{"date":d,"detected":None,"time":None,"scores":None,"rank":None,"float":None,"volume_ratio":None,"short":None,"sec":None,"reason":"당시 이용 가능했던 검증된 가격/Float/SEC 증거 스냅샷 없음; 사용자 게시글 수치를 사실로 사용하지 않음"} for d in ("2026-10-12","2026-10-14","2026-10-16","2026-10-19")]}}
+    report={"updated_at":now,"status":"partial","coverage":coverage,"top10":top,"watchlist":sorted([s for s in scored if s["candidate"]],key=lambda s:-(s["score"] or 0))[:100],"config":config,"fx":fx,"limitations":["EOD IEX feed: no consolidated or real-time volume","Float·CTB 공개 출처 관측 연결; 출처 충돌·기준일·ADS/병합 주의사항 별도 표시; 숏 점수는 교차검증 전 보류","SEC timeline only: legal issuance/free-sale analysis pending","Toss orderability excluded from ranking; user checks broker availability","시총·정지 점검 후보: Float·숏·SEC 공급 상태 전체 검증을 의미하지 않음"],"backtest":{"status":"blocked: point-in-time source snapshots absent","HUBC":[{"date":d,"detected":None,"time":None,"scores":None,"rank":None,"float":None,"volume_ratio":None,"short":None,"sec":None,"reason":"당시 이용 가능했던 검증된 가격/Float/SEC 증거 스냅샷 없음; 사용자 게시글 수치를 사실로 사용하지 않음"} for d in ("2026-10-12","2026-10-14","2026-10-16","2026-10-19")]}}
     report["halt_check"]={k:v for k,v in halt_feed.items() if k!="events"}
     report["ranking_updated_at"]=halt_feed["checked_at"]
     report["ranking_scope"]="full collected universe"
