@@ -14,7 +14,7 @@ Surge Radar repository, data, hosting and settings are outside this project's mo
 - SEC keywords indicate potential risk, never proof of legal issuance or market sale.
 - Float / licensed borrow and short-interest feeds unavailable: F and S remain null on this run.
 - Research TOP 10 generated from real V/R observations and current market-cap metadata, with 40(%) component coverage.
-- Actionable TOP 10 withheld: Toss orderability and halt status are unverified.
+- Actionable TOP 10 withheld: halt status is unverified. Toss orderability is excluded from ranking by user instruction; broker purchase availability is checked by the user.
 - FX: daily USD/KRW reference rate from Frankfurter, not an executable or live exchange rate.
 - HUBC: four historical regular-session IEX minute reconstructions stored. Split reconciliation, consolidated volume, historic float/short snapshots and historic all-market ranks remain unavailable; detection scores/ranks are not invented.
 
@@ -31,7 +31,7 @@ python -m http.server 8000 --directory public
 ## Configuration / credentials
 GitHub Actions secrets: ALPACA_API_KEY, ALPACA_API_SECRET, SEC_USER_AGENT (organization and contact email).
 Never print credential values. Connection probes log only provider status, HTTP code and record counts.
-Market-cap threshold, SEC enrichment budget and evidence-based Toss orderability overrides are in config.json.
+Market-cap threshold and SEC enrichment budget are in config.json. Legacy Toss orderability metadata is retained for reference only and does not gate ranking.
 The dashboard's cap input filters displayed rows; it does not modify server configuration.
 
 ## Methods and limits
@@ -57,4 +57,4 @@ Production browser QA checks desktop and mobile layout, actual JSON loading, Jav
 See Actions run conclusions and artifacts for executed test counts and screenshots. These software tests are not a certified historical strategy backtest.
 
 ## Incomplete
-Verified Float, licensed ChartExchange/Fintel CTB/borrow/short interest, all-stage SEC legal supply reconciliation, verified Toss orderability, current halt-state validation, complete HUBC point-in-time ranks, success/failure comparison cases, and intraday consolidated-price coverage.
+Verified Float, licensed ChartExchange/Fintel CTB/borrow/short interest, all-stage SEC legal supply reconciliation, current halt-state validation, complete HUBC point-in-time ranks, success/failure comparison cases, and intraday consolidated-price coverage.
