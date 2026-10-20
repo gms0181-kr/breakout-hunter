@@ -9,7 +9,7 @@ async def main():
     evidence=[]
     async with async_playwright() as p:
         browser=await p.chromium.launch()
-        for name,width,height in (("desktop",1440,1000),("mobile",390,844)):
+        for name,width,height in (("desktop",1440,1000),("mobile",390,844),("small-mobile",320,740),("tablet",768,1024),("wide-desktop",1920,1080)):
             page=await browser.new_page(viewport={"width":width,"height":height})
             errors=[]
             page.on("pageerror",lambda err: errors.append(type(err).__name__))
@@ -59,6 +59,9 @@ async def main():
                 await buttons.first.click()
                 assert await page.locator("#detail").is_visible()
                 await page.locator("#close").click()
+            if width<768 and await page.locator("#rows [data-ticker]").count():
+                assert await page.locator("#rows tr").first.evaluate("el=>getComputedStyle(el).display")=="grid"
+                assert await page.locator("#rows tr").first.locator("td").nth(5).get_attribute("data-label")=="Float"
             assert not errors,errors
             overflow=await page.evaluate("document.documentElement.scrollWidth > innerWidth")
             assert not overflow,"page horizontal overflow"
