@@ -1,9 +1,11 @@
-name: Verify halt sources
+name: Refresh halt checks
 on:
   push:
     branches: [main]
     paths: ['hunter/halts.py', '.github/workflows/halts.yml', 'tests/test_halts.py']
   workflow_dispatch:
+  schedule:
+    - cron: '*/5 12-23 * * 1-5'
 permissions:
   contents: write
 concurrency:
@@ -18,12 +20,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m hunter.halts
+      - run: python -m pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -v
+      - name: Refresh official halt and recent trade checks
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
+        run: python -m hunter.halts
       - name: Persist halt evidence
         run: |
           git config user.name "breakout-hunter-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/halt-source-probe.json
+          git add public/halts.json public/data.json
           git diff --cached --quiet || git commit -m "Record official halt-source probe [skip ci]"
           git pull --rebase origin main
           git push

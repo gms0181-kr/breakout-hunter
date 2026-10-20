@@ -11,15 +11,18 @@ async def main():
     stocks,coverage=await collect(config)
     replay_result=config.pop("_backtest",{})
     fx=config.pop("_fx",None)
-    # Unknown market cap / halt status cannot silently qualify for the small-cap TOP 10.
-    for stock in stocks:
-        cap=stock.get("market_cap")
-        stock["eligibility"]="eligible" if cap is not None and cap<=config["market_cap_max"] and stock.get("halt_status")=="trading" else "검증 대기"
+    from .halts import check_stocks
+    halt_feed=check_stocks(stocks,config["market_cap_max"])
     eligible=[s for s in stocks if s["eligibility"]=="eligible"]
     top,_=rank(eligible)
     _,scored=rank(stocks)
     now=datetime.now(timezone.utc).isoformat()
-    report={"updated_at":now,"status":"partial","coverage":coverage,"top10":top,"watchlist":sorted([s for s in scored if s["candidate"]],key=lambda s:-(s["score"] or 0))[:100],"config":config,"fx":fx,"limitations":["EOD IEX feed: no consolidated or real-time volume","Float / CTB / short-interest data not connected","SEC timeline only: legal issuance/free-sale analysis pending","Toss orderability excluded from ranking; user checks broker availability","Market cap and halt filters pending: TOP 10 withheld"],"backtest":{"status":"blocked: point-in-time source snapshots absent","HUBC":[{"date":d,"detected":None,"time":None,"scores":None,"rank":None,"float":None,"volume_ratio":None,"short":None,"sec":None,"reason":"당시 이용 가능했던 검증된 가격/Float/SEC 증거 스냅샷 없음; 사용자 게시글 수치를 사실로 사용하지 않음"} for d in ("2026-10-12","2026-10-14","2026-10-16","2026-10-19")]}}
+    report={"updated_at":now,"status":"partial","coverage":coverage,"top10":top,"watchlist":sorted([s for s in scored if s["candidate"]],key=lambda s:-(s["score"] or 0))[:100],"config":config,"fx":fx,"limitations":["EOD IEX feed: no consolidated or real-time volume","Float / CTB / short-interest data not connected","SEC timeline only: legal issuance/free-sale analysis pending","Toss orderability excluded from ranking; user checks broker availability","시총·정지 점검 후보: Float·숏·SEC 공급 상태 전체 검증을 의미하지 않음"],"backtest":{"status":"blocked: point-in-time source snapshots absent","HUBC":[{"date":d,"detected":None,"time":None,"scores":None,"rank":None,"float":None,"volume_ratio":None,"short":None,"sec":None,"reason":"당시 이용 가능했던 검증된 가격/Float/SEC 증거 스냅샷 없음; 사용자 게시글 수치를 사실로 사용하지 않음"} for d in ("2026-10-12","2026-10-14","2026-10-16","2026-10-19")]}}
+    report["halt_check"]={k:v for k,v in halt_feed.items() if k!="events"}
+    report["ranking_updated_at"]=halt_feed["checked_at"]
+    report["ranking_scope"]="full collected universe"
+    report["top10_status"]="시총·정지 점검 후보; Float·숏·SEC 공급 검증 미완료; 토스 매수 가능 여부 사용자 확인"
+    report["coverage"]["halt_filter_status"]="공식 RSS + 최근 IEX 체결 대조; 상태별 유효시간 적용"
     report["backtest"]=replay_result
     report["research_top10"]=sorted([s for s in scored if s["candidate"] and s.get("market_cap") is not None and 0<s["market_cap"]<=config["market_cap_max"]],key=lambda s:-(s["score"] or 0))[:10]
     report["research_top10_status"]="실제 시세·시총 기반 관측점수 순위; 거래정지/Float/숏/공급 검증 대기; 토스 매수 가능 여부는 사용자 확인. 실전 TOP10 아님"

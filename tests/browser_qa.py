@@ -24,6 +24,12 @@ async def main():
                 refresh_response=await refreshed.value
                 assert refresh_response.status==200
                 refresh_verified=True
+            await page.locator("#verified").click()
+            valid=await page.evaluate("activeTop10().length")
+            shown=await page.locator("#rows [data-ticker]").count()
+            assert shown==valid, (shown,valid)
+            if valid:
+                assert await page.locator("#rows").inner_text()
             await page.locator("#research").click()
             await page.screenshot(path=f"qa/{name}.png",full_page=True)
             buttons=page.locator("[data-ticker]")

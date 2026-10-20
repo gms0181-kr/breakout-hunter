@@ -58,3 +58,7 @@ See Actions run conclusions and artifacts for executed test counts and screensho
 
 ## Incomplete
 Verified Float, licensed ChartExchange/Fintel CTB/borrow/short interest, all-stage SEC legal supply reconciliation, current halt-state validation, complete HUBC point-in-time ranks, success/failure comparison cases, and intraday consolidated-price coverage.
+
+## Halt checks and actionable candidates
+Nasdaq official current halt RSS is parsed with item-count, schema, publication-time and HTTP-date checks. A missing symbol is labeled no_halt_detected, never guaranteed trading. Candidates also require a recent IEX latest trade within 15 minutes; a scheduled resumption requires a trade after the scheduled time. Missing/failed/stale sources remain unverified. Positive eligibility expires after at most 10 minutes from RSS publication, or earlier when trade evidence expires. Float, borrow and full SEC supply analysis remain incomplete and never earn assumed points. Toss orderability is user-managed.
+A lightweight halt refresh runs on a best-effort 5-minute weekday schedule (12–23 UTC), reranking stored candidate lists without changing original price-scan time; full collection reranks the full universe. GitHub schedules can be delayed. The UI hides expired actionable candidates. Official feed requests are no more frequent than once per process run, and fresh cached snapshots avoid duplicate requests within one minute.

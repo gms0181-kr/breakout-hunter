@@ -6,7 +6,7 @@ on:
       - 'public/**'
       - '.github/workflows/pages.yml'
   workflow_run:
-    workflows: ['Test and collect']
+    workflows: ['Test and collect', 'Refresh halt checks']
     types: [completed]
   workflow_dispatch:
 permissions:
