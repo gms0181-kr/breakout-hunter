@@ -1,1 +1,1 @@
-{"status": "unavailable", "source": "https://www.nasdaqtrader.com/rss.aspx?feed=tradehalts", "checked_at": "2026-10-21T23:20:04.791935+00:00", "events": [], "error": "ValueError: invalid_symbol", "trade_errors": ["halt_feed_unavailable"], "status_counts": {"unverified": 100}}
+{"status": "unavailable", "source": "https://www.nasdaqtrader.com/rss.aspx?feed=tradehalts", "checked_at": "2026-10-21T23:49:36.177611+00:00", "events": [], "error": "ValueError: invalid_symbol", "trade_errors": ["halt_feed_unavailable"], "status_counts": {"unverified": 100}}
