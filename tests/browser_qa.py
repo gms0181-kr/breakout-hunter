@@ -10,10 +10,13 @@ async def main():
     async with async_playwright() as p:
         browser=await p.chromium.launch()
         for name,width,height in (("desktop",1440,1000),("mobile",390,844),("small-mobile",320,740),("tablet",768,1024),("wide-desktop",1920,1080)):
+            print("viewport_start "+name,flush=True)
             page=await browser.new_page(viewport={"width":width,"height":height})
+            page.set_default_timeout(15000)
             errors=[]
             page.on("pageerror",lambda err: errors.append(type(err).__name__))
             response=await page.goto(url,wait_until="networkidle",timeout=60000)
+            print("viewport_loaded "+name,flush=True)
             assert response and response.status==200
             await page.wait_for_function("report !== null",timeout=30000)
             assert await page.title()=="BREAKOUT HUNTER 1.0"
@@ -66,7 +69,8 @@ async def main():
                 assert await page.locator("#rows .verification-badge").count()==await page.locator("#rows [data-ticker]").count()
             await page.locator("#inlf-validation summary").click()
             assert await page.locator("#inlf-case").is_visible()
-            await page.screenshot(path=f"qa/{name}.png",full_page=True)
+            print("viewport_screenshot "+name,flush=True)
+            await page.screenshot(path=f"qa/{name}.png",full_page=False,timeout=20000)
             buttons=page.locator("[data-ticker]")
             if await buttons.count():
                 await buttons.first.click()
@@ -79,9 +83,12 @@ async def main():
             overflow=await page.evaluate("document.documentElement.scrollWidth > innerWidth")
             assert not overflow,"page horizontal overflow"
             evidence.append({"viewport":name,"http":response.status,"javascript_errors":errors,"passed":True,"automatic_refresh_verified":refresh_verified,"active_candidates":valid,"float_cells":float_cells,"ctb_cells":ctb_cells,"halt_checked_at":await page.evaluate("report.halt_check?.checked_at || null")})
+            print("viewport_passed "+name,flush=True)
             await page.close()
         await browser.close()
     Path("qa/result.json").write_text(json.dumps(evidence,indent=2))
     print(json.dumps(evidence))
-asyncio.run(main())
+async def bounded():
+    await asyncio.wait_for(main(),timeout=480)
+asyncio.run(bounded())
 
