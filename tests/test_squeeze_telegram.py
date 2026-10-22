@@ -57,3 +57,30 @@ class TelegramTests(unittest.TestCase):
     def test_stage_names_match_shared_frontend_labels(self):
         text=Path('public/squeeze-labels.js').read_text();labels={i:n+'단계 '+label for i,n,label in re.findall(r"id:'([^']+)',number:(\d),label:'([^']+)'",text)}
         self.assertEqual(STAGE_LABELS,labels)
+
+class TelegramActivationTests(unittest.TestCase):
+    def test_activation_skips_309_old_alerts_and_delivers_only_new(self):
+        old=[{**alert(i),'occurred_at':(NOW-timedelta(minutes=5)).isoformat()} for i in range(309)]
+        previous={'activation_after':(NOW-timedelta(minutes=1)).isoformat()}
+        calls=[]
+        def send(req,timeout):calls.append(req);return Response()
+        with patch.dict(os.environ,ENV,clear=True):
+            result=deliver_telegram(old+[alert(400)],previous,NOW,send)
+            repeated=deliver_telegram(old+[alert(400)],result,NOW,send)
+        self.assertEqual(result['accepted_ids'],[alert(400)['id']])
+        self.assertEqual(len(calls),1)
+        self.assertEqual(repeated['accepted_this_run'],0)
+        self.assertEqual(result['activation_after'],previous['activation_after'])
+        self.assertEqual(result['last_message_id'],7)
+    def test_safe_diagnostics_distinguish_partial_and_format_errors(self):
+        from hunter.squeeze_telegram import configuration_diagnostics
+        with patch.dict(os.environ,{'TELEGRAM_BOT_TOKEN':'invalid','TELEGRAM_CHAT_ID':'42'},clear=True):
+            d=configuration_diagnostics()
+        self.assertEqual(d,{'token_present':True,'chat_id_present':True,'token_format_valid':False,'chat_id_format_valid':True})
+        self.assertNotIn('invalid',json.dumps(d))
+    def test_delivery_failure_keeps_activation_boundary_for_retry(self):
+        previous={'activation_after':(NOW-timedelta(minutes=1)).isoformat()}
+        with patch.dict(os.environ,ENV,clear=True):
+            failed=deliver_telegram([alert()],previous,NOW,lambda *a,**k:Response({'ok':False}))
+            result=deliver_telegram([alert()],failed,NOW,lambda *a,**k:Response())
+        self.assertEqual(result['accepted_this_run'],1)

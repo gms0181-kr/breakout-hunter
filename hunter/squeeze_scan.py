@@ -192,12 +192,19 @@ async def collect():
     early_watch=sorted([(s,a) for s,a in rows if a.get('early_signal',{}).get('triggered') and s['halt_status'] in ('no_halt_detected','resumed')],key=lambda x:((x[1]['early_signal'].get('change_pct') or 0),x[1]['early_signal'].get('dollar_ratio') or 0),reverse=True)[:20]
     research=valid[:10];actionable=[(s,a) for s,a in valid if a['toss_orderable'] and a['dilution']['status'] in ('희석 공백 확인','즉시 출회 가능성 낮음')][:10]
     risk=[(s,a) for s,a in ordered if a['candidate'] and a['high_risk']]
-    state=update_history(read('squeeze-state.json',{}),[a for s,a in rows],finished)
+    previous_state=read('squeeze-state.json',{})
+    state=update_history(previous_state,[a for s,a in rows],finished)
     company_names={s['ticker']:s['name'] for s,a in rows}
     for alert in state['alerts']:
         if alert['ticker'] in company_names:alert['company_name']=company_names[alert['ticker']]
     from .squeeze_delivery import deliver
-    state['delivery']=deliver(state.get('alerts',[]),read('squeeze-state.json',{}).get('delivery',{}),finished)
+    previous_delivery=previous_state.get('delivery',{})
+    # One-time activation boundary: historical alerts are not a new subscription.
+    telegram=previous_delivery.setdefault('telegram',{})
+    if 'activation_after' not in telegram:
+        telegram['activation_after']=previous_state.get('updated_at') or finished.isoformat()
+    state['delivery']=deliver(state.get('alerts',[]),previous_delivery,finished)
+    print(json.dumps({'telegram_delivery':{k:state['delivery']['telegram'].get(k) for k in ('status','configuration','accepted_this_run','failed_this_run','activation_after','last_accepted_at','last_message_id')}},ensure_ascii=False))
     archive,backtest=replay(read('squeeze-snapshots.json',{}),rows,finished)
     # Detail storage includes independent pressure list and top observations, not legacy lists.
     detail_tickers={s['ticker'] for s in short_watch}|{s['ticker'] for s,a in ordered[:30]}

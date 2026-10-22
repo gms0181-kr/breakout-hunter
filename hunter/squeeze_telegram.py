@@ -32,9 +32,21 @@ def alert_text(a):
     lines.append('https://gms0181-kr.github.io/breakout-hunter/#short-squeeze/'+a['ticker'])
     return '\n'.join(lines[:-1])[:850]+'\n'+lines[-1]
 
+def configuration_diagnostics():
+    """Only booleans and reason codes; never values, lengths, hashes or URLs."""
+    token=os.getenv('TELEGRAM_BOT_TOKEN','').strip()
+    chat=os.getenv('TELEGRAM_CHAT_ID','').strip()
+    return {'token_present':bool(token),'chat_id_present':bool(chat),
+            'token_format_valid':bool(re.fullmatch(r'\d+:[A-Za-z0-9_-]{20,}',token)),
+            'chat_id_format_valid':bool(re.fullmatch(r'-?[1-9]\d*',chat))}
+
 def deliver_telegram(alerts,previous,now,send=None):
     token=os.getenv('TELEGRAM_BOT_TOKEN','').strip();chat=os.getenv('TELEGRAM_CHAT_ID','').strip()
+    diagnostics=configuration_diagnostics()
     sent=list(previous.get('accepted_ids',[]));out={'status':'not_configured','note':'GitHub Secrets TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID 설정 필요','checked_at':now.isoformat(),'accepted_ids':sent,'accepted_this_run':0,'failed_this_run':0}
+    out['configuration']=diagnostics
+    for key in ('activation_after','last_accepted_at','last_message_id'):
+        if key in previous:out[key]=previous[key]
     if not token and not chat:return out
     if not re.fullmatch(r'\d+:[A-Za-z0-9_-]{20,}',token) or not re.fullmatch(r'-?[1-9]\d*',chat):
         out.update(status='invalid_configuration',note='텔레그램 Secret 누락 또는 형식 오류');return out
@@ -42,7 +54,8 @@ def deliver_telegram(alerts,previous,now,send=None):
     retry=instant(previous.get('retry_not_before'))
     if retry and retry>now:
         out.update(status='rate_limited',retry_not_before=retry.isoformat(),note='Telegram 요청 제한 후 재시도 대기');return out
-    pending=[a for a in alerts if a['id'] not in set(sent) and instant(a.get('occurred_at')) and 0<=(now-instant(a['occurred_at'])).total_seconds()<=3600]
+    activation=instant(previous.get('activation_after'))
+    pending=[a for a in alerts if (not activation or (instant(a.get('occurred_at')) and instant(a['occurred_at'])>activation)) if a['id'] not in set(sent) and instant(a.get('occurred_at')) and 0<=(now-instant(a['occurred_at'])).total_seconds()<=3600]
     pending.sort(key=lambda a:a['occurred_at'])
     text='BREAKOUT HUNTER 1.0\nIEX 지연 자료 · 숏스퀴즈 확정·매수 신호 아님\n';batch=[]
     for a in pending[:20]:
@@ -58,7 +71,7 @@ def deliver_telegram(alerts,previous,now,send=None):
             if not 200<=response.status<300 or body.get('ok') is not True:raise RuntimeError('telegram_rejected')
             result=body.get('result',{})
             if str(result.get('chat',{}).get('id'))!=chat or not isinstance(result.get('message_id'),int):raise RuntimeError('recipient_not_verified')
-        out.update(status='telegram_api_accepted',note='Telegram API가 지정 대화로 메시지 접수 확인 · 실제 열람 여부 미확인',accepted_this_run=len(batch),last_accepted_at=now.isoformat(),accepted_ids=(sent+[a['id'] for a in batch])[-2000:])
+        out.update(status='telegram_api_accepted',note='Telegram API가 지정 대화로 메시지 접수 확인 · 실제 열람 여부 미확인',accepted_this_run=len(batch),last_accepted_at=now.isoformat(),last_message_id=result['message_id'],accepted_ids=(sent+[a['id'] for a in batch])[-2000:])
     except Exception as exc:
         # Exceptions may embed the bot token URL. Persist neither URL nor raw errors.
         out.update(status='delivery_failed',note='텔레그램 접수 실패 · 다음 스캔 재시도',failed_this_run=len(batch))
@@ -66,3 +79,6 @@ def deliver_telegram(alerts,previous,now,send=None):
             from datetime import timedelta
             out.update(status='rate_limited',note='Telegram 요청 제한 · 재시도 대기',retry_not_before=(now+timedelta(minutes=15)).isoformat())
     return out
+
+if __name__=='__main__':
+    print(json.dumps({'telegram_configuration':configuration_diagnostics()},ensure_ascii=False))
