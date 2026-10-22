@@ -42,6 +42,8 @@ def ctb_metrics(obs,now):
         result[label+'_change_pp']=b['ctb']-ref['ctb'] if ref else None
         result[label+'_reference_at']=ref.get('as_of') if ref else None
     result['previous_change_pp']=b['ctb']-prior['ctb'] if prior else None
+    result['available_delta']=b['available']-prior['available'] if prior and finite(b.get('available')) and finite(prior.get('available')) else None
+    result['history_24h']=[[x['as_of'],x['ctb']] for x in history if age_ok(x['as_of'],now,1)][-288:]
     result['available_drop_pct']=-pct(b.get('available'),prior.get('available')) if prior and pct(b.get('available'),prior.get('available')) is not None else None
     result['resupplied']=bool(prior and prior.get('available')==0 and finite(b.get('available')) and b['available']>0)
     streak=[]
