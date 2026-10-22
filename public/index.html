@@ -124,7 +124,14 @@ function borrowCell(s){
  if(b.ctb==null)return '<span>—</span><br><small>'+escapeHtml(b.error||b.status||'공개 값 없음')+'</small>';
  return '<span data-ctb-value="yes">'+fmt(b.ctb,'%')+'</span><br><small>가용 '+fmt(b.available,'주',0)+(b.stale?' · 이전 관측':'')+'</small><br><small>'+link(b.source,'ChartExchange · IBKR')+'</small><br><small>'+escapeHtml(b.as_of?kst(b.as_of)+' KST':'공급자 기준시각 없음')+'</small>';
 }
-async function loadEnrichment(){try{const r=await fetch('https://raw.githubusercontent.com/gms0181-kr/breakout-hunter/main/public/enrichment.json?t='+Date.now(),{cache:'no-store'});if(r.ok)enrichment=await r.json()}catch{}}
+async function newestJSON(urls){
+ const results=await Promise.allSettled(urls.map(async url=>{const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);return r.json()}));
+ const values=results.filter(x=>x.status==='fulfilled'&&x.value&&typeof x.value==='object').map(x=>x.value);
+ if(!values.length)throw Error('모든 데이터 경로 조회 실패');
+ return values.reduce((a,b)=>(Date.parse(b.updated_at)||0)>(Date.parse(a.updated_at)||0)?b:a);
+}
+async function loadEnrichment(){try{const t=Date.now();enrichment=await newestJSON(['./enrichment.json?t='+t,'https://raw.githubusercontent.com/gms0181-kr/breakout-hunter/main/public/enrichment.json?t='+t])}catch{}}
+
 
 function storedTop10(){return report?.top10?.length?report.top10:(report?.last_top10||[])}
 function activeTop10(){return (report?.top10||[]).filter(s=>['no_halt_detected','resumed'].includes(s.halt_check?.status)&&Date.parse(s.halt_check?.expires_at)>Date.now())}
@@ -178,7 +185,8 @@ function detail(s){
 $('close').onclick=()=>{$('detail').close();history.replaceState(null,'',location.pathname)};
 $('triple').onclick=()=>{triple=true;research=false;watch=false;draw()};
 $('verified').onclick=()=>{triple=false;research=false;watch=false;draw()};$('research').onclick=()=>{triple=false;research=true;watch=false;draw()};$('watch').onclick=()=>{triple=false;watch=true;research=false;draw()};$('cap').oninput=draw;
-async function refresh(){try{let res;try{res=await fetch('https://raw.githubusercontent.com/gms0181-kr/breakout-hunter/main/public/data.json?t='+Date.now(),{cache:'no-store'});if(!res.ok)throw Error('HTTP '+res.status);report=await res.json()}catch{res=await fetch('./data.json?t='+Date.now(),{cache:'no-store'});if(!res.ok)throw Error('HTTP '+res.status);report=await res.json()}await loadEnrichment();$('error').textContent='';draw()}catch(e){$('error').textContent='데이터 불러오기 실패: '+e.message+' · 마지막 성공 결과를 유지합니다.'}}
+async function refresh(){try{const t=Date.now();report=await newestJSON(['./data.json?t='+t,'https://raw.githubusercontent.com/gms0181-kr/breakout-hunter/main/public/data.json?t='+t]);await loadEnrichment();$('error').textContent='';draw()}catch(e){$('error').textContent='데이터 불러오기 실패: '+e.message+' · 마지막 성공 결과를 유지합니다.'}}
+
 
 let favorites=[];
 try{const saved=JSON.parse(localStorage.getItem('bh-favorites')||'[]');favorites=Array.isArray(saved)?saved.filter(x=>typeof x==='string'):[]}catch{}
