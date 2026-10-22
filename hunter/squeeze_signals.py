@@ -66,7 +66,7 @@ def market_metrics(stock,now):
     obv=[0]
     for a,c in zip(bars,bars[1:]):obv.append(obv[-1]+(c['volume'] if c['close']>a['close'] else -c['volume'] if c['close']<a['close'] else 0))
     recent=bars[-5:];older=bars[-15:-5];range5=mean((x['high']-x['low'])/x['close'] for x in recent);range10=mean((x['high']-x['low'])/x['close'] for x in older)
-    m={'valid':True,'as_of':b['time'],'bars':len(bars),'price':b['close'],'change_pct':change,'dollar_volume':b['close']*b['volume'],'dollar_ratio':dvr,'dollar_increase_pct':(dvr-1)*100 if dvr is not None else None,'rvol':rvol,'vwap':vwap,'above_vwap':b['close']>=vwap if finite(vwap) and vwap>0 else None,'vwap_reclaim':p['close']<prior_vwap and b['close']>=vwap if finite(vwap) and finite(prior_vwap) else None,'vwap_distance_pct':pct(b['close'],vwap),'rsi14':rsi,'obv_rising':obv[-1]>obv[-6],'low_defense':b['low']>=low*.98 and b['close']>=low*1.02,'higher_low':b['low']>p['low'],'support':low,'resistance':resistance,'breakout':b['close']>resistance,'near_resistance':resistance*.95<=b['close']<=resistance,'close_retention':(b['close']-b['low'])/(b['high']-b['low']) if b['high']>b['low'] else None,'compression':range5<range10*.7 and mean(x['volume'] for x in recent)<mean(x['volume'] for x in older) and min(x['low'] for x in recent)>=low*.98,'return_5d_pct':pct(b['close'],bars[-6]['close']),'return_20d_pct':pct(b['close'],bars[-21]['close']),'oversold_rebound':rsi<=35 and change>0 and b['low']>=low*.98,'scope':'IEX 부분 거래소 일봉 · 거래대금=종가×거래량 근사 · 순매수 자금 아님'}
+    m={'valid':True,'as_of':b['time'],'bars':len(bars),'price':b['close'],'change_pct':change,'dollar_volume':b['close']*b['volume'],'dollar_ratio':dvr,'dollar_increase_pct':(dvr-1)*100 if dvr is not None else None,'rvol':rvol,'vwap':vwap,'above_vwap':b['close']>=vwap if finite(vwap) and vwap>0 else None,'vwap_reclaim':p['close']<prior_vwap and b['close']>=vwap if finite(vwap) and vwap>0 and finite(prior_vwap) and prior_vwap>0 else None,'vwap_distance_pct':pct(b['close'],vwap),'rsi14':rsi,'obv_rising':obv[-1]>obv[-6],'low_defense':b['low']>=low*.98 and b['close']>=low*1.02,'higher_low':b['low']>p['low'],'support':low,'resistance':resistance,'breakout':b['close']>resistance,'near_resistance':resistance*.95<=b['close']<=resistance,'close_retention':(b['close']-b['low'])/(b['high']-b['low']) if b['high']>b['low'] else None,'compression':range5<range10*.7 and mean(x['volume'] for x in recent)<mean(x['volume'] for x in older) and min(x['low'] for x in recent)>=low*.98,'return_5d_pct':pct(b['close'],bars[-6]['close']),'return_20d_pct':pct(b['close'],bars[-21]['close']),'oversold_rebound':rsi<=35 and change>0 and b['low']>=low*.98,'scope':'IEX 부분 거래소 일봉 · 거래대금=종가×거래량 근사 · 순매수 자금 아님'}
     m['chase_risk']=bool(change>=30 or m['return_5d_pct']>=80 or m['return_20d_pct']>=100)
     m['fresh']=age_ok(b['available_at'] if b.get('available_at') else b['time'],now,4) and age_ok(b['time'],now,5)
     return m
@@ -79,17 +79,18 @@ def intraday_metrics(stock,now):
     today=instant(b['time']).astimezone(ZoneInfo('America/New_York')).date()
     bars=[x for x in bars if instant(x['time']).astimezone(ZoneInfo('America/New_York')).date()==today]
     if len(bars)<8:return {'valid':False,'reason':'현재 세션 표본 부족'}
-    vols=sum(x['volume'] for x in bars);vwap=sum(x.get('vwap',x['close'])*x['volume'] for x in bars)/vols if vols else None
+    vols=sum(x['volume'] for x in bars);vwap=sum((x['vwap'] if finite(x.get('vwap')) and x['vwap']>0 else x['close'])*x['volume'] for x in bars)/vols if vols else None
     base=bars[-7:-1];avg=mean(x['close']*x['volume'] for x in base);ratio=b['close']*b['volume']/avg if avg>0 else None
     return {'valid':True,'as_of':b['time'],'price':b['close'],'vwap':vwap,'above_vwap':b['close']>=vwap if vwap else None,'breakout':b['close']>max(x['high'] for x in base),'dollar_ratio':ratio,'retention':(b['close']-b['low'])/(b['high']-b['low']) if b['high']>b['low'] else None,'low_defense':b['low']>=min(x['low'] for x in base)*.98,'scope':'IEX 5분봉 · 최소20분 지연 · VWAP는 당일 관측 범위'}
 
 def dilution(sec,now):
-    # Only a deliberately reviewed, timed, source-backed assessment may score.
-    assessment=sec.get('squeeze_assessment',{})
-    states={'희석 공백 확인':20,'즉시 출회 가능성 낮음':12,'즉시 출회 위험 높음':0}
-    if assessment.get('reviewed') is True and assessment.get('contracts_reconciled') is True and assessment.get('source','').startswith('https://www.sec.gov/Archives/') and age_ok(assessment.get('reviewed_at'),now,1) and age_ok(assessment.get('known_at'),now,1) and assessment.get('status') in states:
-        return {'status':assessment['status'],'points':states[assessment['status']],'coverage':20,'source':assessment['source']}
-    docs=[x for x in sec.get('documents',[]) if x.get('sha256') and age_ok(x.get('known_at'),now,7)]
+    # Reuse source-linked instrument facts, never an unverified safe/unsafe label.
+    from .verification import dilution as verify_supply
+    verified=verify_supply(sec,now.isoformat())
+    if verified['score'] is not None:
+        status='즉시 출회 위험 높음' if verified['score']==0 else '희석 공백 확인'
+        return {'status':status,'points':0 if verified['score']==0 else 20,'coverage':20,'facts':verified['facts'],'documents':verified['documents'],'flags':sec.get('risk_flags',[]),'note':verified['note']}
+    docs=[x for x in sec.get('documents',[]) if x.get('sha256') and x.get('source','').startswith('https://www.sec.gov/Archives/') and age_ok(x.get('known_at'),now,7)]
     return {'status':'추가 검증 필요' if docs else '검증 불가','points':None,'coverage':0,'flags':sec.get('risk_flags',[]),'documents':docs,'note':'희석 수단 문구와 즉시 신규 발행·자유매도 가능성을 구분; 원문·첨부계약 조건 미확정이면 안전 점수 없음'}
 
 def analyze(stock,obs,now=None):

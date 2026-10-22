@@ -42,9 +42,17 @@ class IndependentHunterTests(unittest.TestCase):
     def test_future_si_observation(self):
         s,o=fixture();o['short_interest']['observed_at']=(NOW+timedelta(days=1)).isoformat();self.assertFalse(analyze(s,o,NOW)['official_interest']['scoring_valid'])
     def test_lexical_no_safe_dilution(self):
-        s,o=fixture();s['sec']={'risk_flags':[],'documents':[{'sha256':'abc','known_at':NOW.isoformat()}]};self.assertEqual(analyze(s,o,NOW)['dilution']['status'],'추가 검증 필요')
+        s,o=fixture();s['sec']={'risk_flags':[],'documents':[{'sha256':'abc','known_at':NOW.isoformat(),'source':'https://www.sec.gov/Archives/test'}]};self.assertEqual(analyze(s,o,NOW)['dilution']['status'],'추가 검증 필요')
     def test_high_risk_review(self):
-        s,o=fixture();s['sec']={'squeeze_assessment':{'reviewed':True,'contracts_reconciled':True,'source':'https://www.sec.gov/Archives/example','reviewed_at':NOW.isoformat(),'known_at':NOW.isoformat(),'status':'즉시 출회 위험 높음'}};a=analyze(s,o,NOW);self.assertTrue(a['high_risk']);self.assertEqual(a['components']['dilution_gap']['score'],0)
+        s,o=fixture();src='https://www.sec.gov/Archives/test'
+        s['sec']={'documents':[{'source':src,'sha256':'abc','known_at':NOW.isoformat(),'accepted_at':NOW.isoformat()}],'supply_facts':[{'source':src,'known_at':NOW.isoformat(),'reviewed':True,'evidence':'Common shares are freely resalable as of the analysis time.','security_id':'offering-1','share_basis_verified':True,'valid_until':(NOW+timedelta(hours=1)).isoformat(),'effective_at':NOW.isoformat(),'new_issuance_now':True}]}
+        a=analyze(s,o,NOW);self.assertTrue(a['high_risk']);self.assertEqual(a['components']['dilution_gap']['score'],0)
+
+    def test_unlinked_safe_label_not_trusted(self):
+        s,o=fixture();s['sec']={'squeeze_assessment':{'reviewed':True,'contracts_reconciled':True,'status':'희석 공백 확인','source':'https://www.sec.gov/Archives/test','reviewed_at':NOW.isoformat(),'known_at':NOW.isoformat()}}
+        self.assertIsNone(analyze(s,o,NOW)['components']['dilution_gap']['score'])
+    def test_intervening_split_blocks_si(self):
+        s,o=fixture();s['split_check']={'events':[{'ex_date':'2026-10-01'}]};self.assertFalse(analyze(s,o,NOW)['official_interest']['scoring_valid'])
     def test_stage_jump_and_downgrade(self):
         s,o=fixture();a=analyze(s,o,NOW);self.assertEqual(a['stage'],'EXPANSION');s['bars'][-1].update(close=1,high=1.02,low=.94,volume=1000);b=analyze(s,o,NOW);self.assertEqual(b['stage'],'FUEL BUILDING');h=update_history({},[a],NOW);h=update_history(h,[b],NOW+timedelta(minutes=15));self.assertEqual(h['history'][-1]['current'],'FUEL BUILDING')
     def test_alert_dedup(self):

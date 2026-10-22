@@ -75,7 +75,7 @@ def replay(archive,rows,now):
     for ticker,records in by.items():
         records.sort(key=lambda x:x['observed_at'])
         for i,x in enumerate(records):
-            future=[y for y in records[i+1:] if instant(y['price_at'])>instant(x['observed_at'])][:5]
+            future=[y for y in records[i+1:] if instant(y['price_at'])>instant(x['observed_at']) and instant(y['observed_at'])-instant(x['observed_at'])<=timedelta(days=12)][:5]
             if len(future)<5:continue
             gain=max((y['price']/x['price']-1)*100 for y in future);item={'ticker':ticker,'first_observed_at':x['observed_at'],'max_close_gain_5_observations_pct':gain,'candidate':x['candidate'],'metric':'5개 후속 관측 일봉 종가 중 +10% 도달; 장중 고가·실현수익 아님'}
             if x['candidate']:positives.append(item)
