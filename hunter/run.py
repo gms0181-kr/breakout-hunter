@@ -27,6 +27,9 @@ async def main():
     report["top10_status"]="시총·정지 점검 후보; Float·숏·SEC 공급 검증 미완료; 토스 매수 가능 여부 사용자 확인"
     report["coverage"]["halt_filter_status"]="공식 RSS + 최근 IEX 체결 대조; 상태별 유효시간 적용"
     report["backtest"]=replay_result
+    inlf_stock=next((s for s in scored if s["ticker"]=="INLF"),None)
+    if inlf_stock:
+        inlf_case["current_verification"]={"price_as_of":inlf_stock.get("price_as_of"),"verification":inlf_stock["verification"],"sec_clauses":inlf_stock.get("sec",{}).get("clause_evidence",[]),"feed":inlf_stock.get("feed")}
     report["inlf_case"]=inlf_case
     report["verification_candidates"]=sorted([s for s in scored if s["verification"]["candidate"]],key=lambda s:-(s["verification"]["score"] or 0))[:100]
     report["verification_summary"]={"evaluated":len(scored),"grades":{g:sum(s["verification"]["grade"]==g for s in scored) for g in ("A","B","C","관찰","검증 불가")},"scope":"full price universe; SEC and borrow coverage separately limited"}

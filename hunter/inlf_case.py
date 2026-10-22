@@ -15,13 +15,17 @@ async def replay_inlf(session,cik=None):
     headers={'APCA-API-KEY-ID':key,'APCA-API-SECRET-KEY':secret}
     try:
         response=await fetch(session,'https://data.alpaca.markets/v2/stocks/INLF/bars',headers=headers,params={'timeframe':'1Day','start':(now-timedelta(days=160)).strftime('%Y-%m-%d'),'end':now.astimezone(ZoneInfo('America/New_York')).replace(hour=0,minute=0,second=0,microsecond=0).isoformat(),'feed':'iex','adjustment':'raw','sort':'asc','limit':1000})
-        bars=response.get('bars',[])
+        bars=response.get('bars') or []
+        if not bars:
+            result['status']='과거 INLF raw 일봉 없음; 가격 기반 사전 탐지 검증 불가'
+            result['price_response_status']='no_bars'
+            return result
         days=[b['t'][:10] for b in bars[-5:]]
         for day in days:
             cutoff=datetime.fromisoformat(day+'T15:55:00').replace(tzinfo=ZoneInfo('America/New_York')).astimezone(timezone.utc)
             start=datetime.fromisoformat(day+'T09:30:00').replace(tzinfo=ZoneInfo('America/New_York')).astimezone(timezone.utc)
             raw=await fetch(session,'https://data.alpaca.markets/v2/stocks/INLF/bars',headers=headers,params={'timeframe':'1Min','start':start.isoformat(),'end':cutoff.isoformat(),'feed':'iex','adjustment':'raw','sort':'asc','limit':10000,'asof':day})
-            minutes=[b for b in raw.get('bars',[]) if start<=instant(b['t']) and instant(b['t'])+timedelta(minutes=1)<=cutoff]
+            minutes=[b for b in (raw.get('bars') or []) if instant(b.get('t')) and start<=instant(b['t']) and instant(b['t'])+timedelta(minutes=1)<=cutoff]
             prior=[{'time':b['t'],'available_at':(instant(b['t'])+timedelta(days=1)).isoformat(),'open':b['o'],'high':b['h'],'low':b['l'],'close':b['c'],'volume':b['v'],'vwap':b.get('vw')} for b in bars if b['t'][:10]<day]
             if minutes:
                 volume=sum(b['v'] for b in minutes)
@@ -32,5 +36,5 @@ async def replay_inlf(session,cik=None):
             # to completed all-session daily volume without a matched-time baseline.
             row={'as_of':cutoff.isoformat(),'minute_count':len(minutes),'price_as_of':minutes[-1]['t'] if minutes else None,'observed_price':minutes[-1]['c'] if minutes else None,'partial_session_volume':sum(b['v'] for b in minutes) if minutes else None,'partial_session_turnover_proxy':sum(b['c']*b['v'] for b in minutes) if minutes else None,'partial_session_vwap':prior[-1].get('vwap') if minutes else None,'filings_available_by_cutoff':filings,'capital_inflow_confirmed':None,'support_oversold_confirmed':None,'immediate_dilution':None,'ctb_change':None,'borrow_change':None,'detected':None,'reason':'분봉 재구성; 동일시각 거래대금 기준선·당시 병합 조정·계약 공급 검증·과거 대차 스냅샷 부족','source':'https://data.alpaca.markets/v2/stocks/INLF/bars','feed':'IEX only, raw','lookahead_guard':'현재 날짜 full-day bar 제외; 분봉 종료<=15:55 ET; accepted timestamp<=cutoff인 공시만 포함'}
             result['sessions'].append(row)
-    except (RuntimeError,ValueError,TypeError,KeyError) as exc:result['error']=type(exc).__name__
+    except (RuntimeError,ValueError,TypeError,KeyError) as exc:result['error']=type(exc).__name__+': '+str(exc)[:180]
     return result

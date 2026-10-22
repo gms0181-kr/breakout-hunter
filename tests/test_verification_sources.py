@@ -25,3 +25,8 @@ class SourcesTests(unittest.IsolatedAsyncioTestCase):
         async def timeline(*args):return {'timeline':[{'accepted':'2026-10-20T19:54:00Z'},{'accepted':'2026-10-20T19:56:00Z'}]}
         with patch.dict('os.environ',{'ALPACA_API_KEY':'test','ALPACA_API_SECRET':'test'}),patch('hunter.inlf_case.fetch',fake),patch('hunter.inlf_case.sec_timeline',timeline):r=await replay_inlf(None,1)
         row=r['sessions'][0];self.assertEqual(row['minute_count'],1);self.assertEqual(row['observed_price'],1.5);self.assertEqual(len(row['filings_available_by_cutoff']),1);self.assertIsNone(row['detected']);self.assertIsNone(row['ctb_change'])
+
+    async def test_inlf_null_bars_is_explicit_unavailable(self):
+        async def fake(*args,**kwargs):return {'bars':None}
+        with patch.dict('os.environ',{'ALPACA_API_KEY':'test','ALPACA_API_SECRET':'test'}),patch('hunter.inlf_case.fetch',fake):r=await replay_inlf(None)
+        self.assertEqual(r['price_response_status'],'no_bars');self.assertNotIn('error',r)
