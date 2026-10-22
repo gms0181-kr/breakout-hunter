@@ -39,7 +39,7 @@ def select_borrow(stocks,cache,now,budget=240):
     due=[s for s in stocks if not stamp(s) or now-stamp(s)>=timedelta(minutes=15)]
     fair=sorted(due,key=lambda s:(cache.get(s['ticker'],{}).get('attempted_at',''),s['ticker']))
     # At least half the budget remains oldest-first: hot symbols cannot starve coverage.
-    chosen=fair[:max(0,budget)//2];seen={s['ticker'] for s in chosen}
+    chosen=fair[:max(0,budget)*2//3];seen={s['ticker'] for s in chosen}
     ranked=sorted(due,key=lambda s:(market_probe(s,now).get('triggered',False),cache.get(s['ticker'],{}).get('borrow',{}).get('ctb') or 0),reverse=True)
     for s in ranked:
         if len(chosen)>=budget:break
@@ -49,5 +49,5 @@ def select_borrow(stocks,cache,now,budget=240):
 def early_signal(probe,intra):
     if intra.get('valid'):
         hit=(intra.get('daily_change_pct') or 0)>=5 and (intra.get('session_dollar_ratio') or 0)>=.3 and intra.get('above_vwap') and (intra.get('retention') or 0)>=.5
-        return {'triggered':bool(hit),'as_of':intra.get('as_of'),'basis':'IEX 지연 5분봉 · 당일 +5%·평균 일 거래대금 0.3배·VWAP 상단·가격 유지','short_verified':False}
+        return {'triggered':bool(hit),'as_of':intra.get('as_of'),'price':intra.get('price'),'change_pct':intra.get('daily_change_pct'),'dollar_ratio':intra.get('session_dollar_ratio'),'vwap':intra.get('vwap'),'retention':intra.get('retention'),'basis':'IEX 지연 5분봉 · 당일 +5%·평균 일 거래대금 0.3배·VWAP 상단·가격 유지','short_verified':False}
     return {**probe,'short_verified':False}

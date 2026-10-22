@@ -193,7 +193,7 @@ def update_history(previous,rows,now):
             if (b.get('available_drop_pct') or 0)>=50:emit(t,'borrow_drop',b.get('previous_available'),b.get('available'),'공급원 잔량 50% 이상 감소',b['as_of'])
         if finite(prev_score) and finite(score) and score-prev_score>=8 and prior.get('pressure_coverage')==c['coverage']:emit(t,'pressure_jump',prev_score,score,'동일 커버리지에서 숏 압박 8점 이상 증가',b.get('as_of'))
         early=a.get('early_signal',{})
-        if early.get('triggered'):emit(t,'market_early_watch',prior.get('early_triggered'),True,early['basis']+' · 숏스퀴즈 확정 아님',early.get('as_of'))
+        if early.get('triggered'):emit(t,'market_early_watch',prior.get('early_triggered'),early,early['basis']+' · 숏스퀴즈 확정 아님',early.get('as_of'))
         if stage in ('IGNITION','EXPANSION') and a['market'].get('breakout'):emit(t,'breakout_inflow',None,stage,a['stage_reason'],a['market'].get('as_of'))
         risky=set(a['dilution'].get('flags',[])) & {'ATM','ELOC','PIPE','RD','RESALE','CONVERTIBLE','WARRANT'}
         cutoff=instant(previous.get('updated_at')) or now-timedelta(days=1)
