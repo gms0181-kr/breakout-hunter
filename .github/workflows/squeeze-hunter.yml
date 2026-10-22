@@ -1,0 +1,45 @@
+name: Short Squeeze Hunter
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'hunter/squeeze_*.py'
+      - 'tests/test_squeeze_hunter.py'
+      - '.github/workflows/squeeze-hunter.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '7,22,37,52 * * * 1-5'
+permissions:
+  contents: write
+concurrency:
+  group: independent-squeeze-hunter
+  cancel-in-progress: false
+jobs:
+  hunt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Independent engine and existing regression tests
+        run: python -m unittest discover -s tests -v
+      - name: Scan independent listing universe
+        run: python -u -m hunter.squeeze_scan
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: squeeze-point-in-time-evidence
+          retention-days: 90
+          path: |
+            public/squeeze-*.json
+      - name: Persist independent observations
+        run: python -m hunter.squeeze_persist
