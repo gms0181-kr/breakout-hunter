@@ -13,7 +13,6 @@ from zoneinfo import ZoneInfo
 from .core import known
 
 CACHE=Path("public/enrichment.json")
-MAX_SYMBOLS=120
 class Text(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True);self.skip=0;self.parts=[]
@@ -88,7 +87,7 @@ def combine_float(sources):
 def enrich_one(stock):
     ticker=stock["ticker"]
     exchange={"NASDAQ":"nasdaq","NYSE":"nyse","NYSE American":"nyseamerican"}.get(stock.get("exchange"))
-    if not exchange:return {"ticker":ticker,"observed_at":datetime.now(timezone.utc).isoformat(),"error":"exchange_not_mapped"}
+    if not exchange:return {"ticker":ticker,"observed_at":datetime.now(timezone.utc).isoformat(),"error":"exchange_not_mapped","borrow":{"ctb":None,"available":None,"status":"거래소 매핑 미지원 · CTB 조회 불가"}}
     base="https://chartexchange.com/symbol/"+exchange+"-"+ticker.lower()+"/"
     a=observe(base,overview,ticker);time.sleep(.15)
     b=observe("https://finviz.com/quote.ashx?t="+ticker,finviz,ticker);time.sleep(.15)
@@ -120,18 +119,29 @@ def apply_cached(stocks,cache=None):
         if known(b.get("ctb")):
             s["short"]={**(s.get("short") or {}),**b,"status":"ChartExchange/IBKR 출처 확인; Fintel 교차 대조 미완료"}
     return stocks
-def main():
-    report=json.loads(Path("public/data.json").read_text())
-    cache=load_cache();symbols=cache.setdefault("symbols",{})
+def collection_targets(report,symbols,now=None):
+    """Visit every due candidate; unseen symbols first, then oldest attempts.
+
+    A fixed prefix starved new candidates whenever prior observations expired.
+    Failed attempts retain a timestamp and a reason instead of looping first.
+    """
+    now=now or datetime.now(timezone.utc)
     ordered={}
     for group in ("top10","research_top10","last_top10","watchlist","verification_candidates"):
         for stock in report.get(group,[]):ordered.setdefault(stock["ticker"],stock)
-    def due(ticker):
-        # Retry source paths corrected after an observed 404; keep successful cache entries.
-        if symbols.get(ticker,{}).get("borrow",{}).get("error")=="HTTP 404":return True
-        try:return (datetime.now(timezone.utc)-datetime.fromisoformat(symbols[ticker]["observed_at"])).total_seconds()>900
-        except (KeyError,TypeError,ValueError):return True
-    targets=[s for t,s in ordered.items() if due(t)][:MAX_SYMBOLS]
+    def attempted(ticker):
+        try:
+            stamp=datetime.fromisoformat(symbols[ticker]["observed_at"].replace('Z','+00:00'))
+            return stamp.timestamp() if stamp.tzinfo else 0
+        except (KeyError,TypeError,ValueError):return 0
+    targets=[s for t,s in ordered.items() if not symbols.get(t,{}).get('borrow') or now.timestamp()-attempted(t)>=900]
+    targets.sort(key=lambda s:(bool(symbols.get(s['ticker'],{}).get('borrow')),attempted(s['ticker'])))
+    return ordered,targets
+
+def main():
+    report=json.loads(Path("public/data.json").read_text())
+    cache=load_cache();symbols=cache.setdefault("symbols",{})
+    ordered,targets=collection_targets(report,symbols)
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
         for result in pool.map(enrich_one,targets):
             ticker=result["ticker"]

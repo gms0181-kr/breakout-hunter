@@ -112,9 +112,15 @@ function floatCell(s){
  const errors=(f.sources||[]).filter(x=>x.error).map(x=>x.error).join(' / ');
  return '<span data-float-value="'+(f.display_value!=null?'yes':'no')+'">'+escapeHtml(values)+'</span><br><small>'+escapeHtml(labels[f.status]||f.status)+(f.stale?' · 이전 관측':'')+'</small><br><small>'+source+'</small><br><small>'+escapeHtml((f.flags||[]).join(' · ')||errors)+'</small>';
 }
+function borrowCoverage(){
+ const stocks=[...new Map(['top10','research_top10','last_top10','watchlist','verification_candidates'].flatMap(k=>report?.[k]||[]).map(s=>[s.ticker,s])).values()];
+ let values=0,failed=0,waiting=0;
+ stocks.forEach(s=>{const b=sourceObservation(s)?.borrow;if(!b)waiting++;else if(b.ctb!=null)values++;else failed++});
+ return '전체 '+stocks.length+'(종목) / 값 확인 '+values+' / 조회 후 값 없음·오류 '+failed+' / 미조회 '+waiting;
+}
 function borrowCell(s){
  const b=sourceObservation(s)?.borrow;
- if(!b)return '<span>수집 대기</span>';
+ if(!b)return '<span>미조회 · 다음 수집 우선 처리</span>';
  if(b.ctb==null)return '<span>—</span><br><small>'+escapeHtml(b.error||b.status||'공개 값 없음')+'</small>';
  return '<span data-ctb-value="yes">'+fmt(b.ctb,'%')+'</span><br><small>가용 '+fmt(b.available,'주',0)+(b.stale?' · 이전 관측':'')+'</small><br><small>'+link(b.source,'ChartExchange · IBKR')+'</small><br><small>'+escapeHtml(b.as_of?kst(b.as_of)+' KST':'공급자 기준시각 없음')+'</small>';
 }
@@ -183,7 +189,7 @@ function decorate(){
  const columns=Array.from(document.querySelectorAll('.table thead th'),th=>th.textContent.trim());
  document.querySelectorAll('#rows tr').forEach(row=>Array.from(row.cells).forEach((cell,i)=>{if(!cell.hasAttribute('colspan'))cell.dataset.label=columns[i]||''}));
 
- $('enrichment-summary').textContent='Float·CTB 공개 출처 관측: '+(enrichment.updated_at?kst(enrichment.updated_at)+' KST':'수집 대기')+' · Float 기준일 미공개는 조회시각과 구분합니다. Fintel 자동 조회: '+(enrichment.fintel_access?.status||'대기')+' · 단일 출처 CTB는 교차 확인 전 숏 점수에 반영하지 않습니다.';
+ $('enrichment-summary').textContent='Float·CTB 공개 출처 관측: '+(enrichment.updated_at?kst(enrichment.updated_at)+' KST':'수집 대기')+' · 현재 후보 CTB: '+borrowCoverage()+' · Float 기준일 미공개는 조회시각과 구분합니다. Fintel 자동 조회: '+(enrichment.fintel_access?.status||'대기')+' · 단일 출처 CTB는 교차 확인 전 숏 점수에 반영하지 않습니다.';
 
  const hc=report?.halt_check;
  const fresh=hc?.status==='ok'&&Date.parse(hc.expires_at)>Date.now();

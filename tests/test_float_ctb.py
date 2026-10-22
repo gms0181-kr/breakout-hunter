@@ -1,5 +1,5 @@
 import unittest
-from hunter.float_ctb import number,overview,finviz,borrow,combine_float,apply_cached
+from hunter.float_ctb import number,overview,finviz,borrow,combine_float,apply_cached,collection_targets,enrich_one
 class FloatBorrowTests(unittest.TestCase):
     def test_units_and_missing(self):
         for raw,value in (("15.04M",15040000),("178,822",178822),("2.1B",2100000000),("5K",5000)):
@@ -40,4 +40,33 @@ class FloatBorrowTests(unittest.TestCase):
             apply_cached(stocks,{"symbols":{"TEST":{"float":{"status":state,"display_value":1000000,"flags":flags},"borrow":{"ctb":30,"available":0,"cross_verified":False}}}})
             self.assertEqual(stocks[0]["float"],expected)
             self.assertFalse(stocks[0]["short"]["cross_verified"])
+class CollectionCoverageTests(unittest.TestCase):
+    def test_no_120_symbol_cutoff_and_missing_first(self):
+        from datetime import datetime,timezone,timedelta
+        now=datetime.now(timezone.utc)
+        stocks=[{'ticker':'S'+str(i)} for i in range(200)]
+        cache={s['ticker']:{'observed_at':(now-timedelta(hours=1)).isoformat(),'borrow':{'ctb':10}} for s in stocks[:150]}
+        ordered,targets=collection_targets({'watchlist':stocks[:100],'verification_candidates':stocks[100:]},cache,now)
+        self.assertEqual(len(targets),200)
+        self.assertEqual(targets[0]['ticker'],'S150')
+        self.assertEqual(len(ordered),200)
+    def test_fresh_failures_do_not_starve_unseen_or_hammer_source(self):
+        from datetime import datetime,timezone
+        now=datetime.now(timezone.utc)
+        report={'top10':[{'ticker':'A'},{'ticker':'B'}],'watchlist':[{'ticker':'A'}]}
+        cache={'A':{'observed_at':now.isoformat(),'borrow':{'error':'HTTP 404'}}}
+        self.assertEqual([s['ticker'] for s in collection_targets(report,cache,now)[1]],['B'])
+    def test_oldest_first_and_missing_borrow_despite_recent_timestamp(self):
+        from datetime import datetime,timezone,timedelta
+        now=datetime.now(timezone.utc)
+        cache={t:{'observed_at':(now-timedelta(minutes=m)).isoformat(),'borrow':{'ctb':1}} for t,m in [('A',20),('B',60)]}
+        cache['C']={'observed_at':now.isoformat()}
+        targets=collection_targets({'watchlist':[{'ticker':t} for t in 'ABC']},cache,now)[1]
+        self.assertEqual([s['ticker'] for s in targets],['C','B','A'])
+    def test_unsupported_exchange_is_explicit_attempt(self):
+        item=enrich_one({'ticker':'TEST','exchange':'UNKNOWN'})
+        self.assertIsNone(item['borrow']['ctb'])
+        self.assertIn('조회 불가',item['borrow']['status'])
+
 if __name__=="__main__":unittest.main()
+
