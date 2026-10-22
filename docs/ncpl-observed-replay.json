@@ -1,0 +1,30 @@
+{
+  "observed_at": "2026-10-22T17:57:16.230035+00:00",
+  "ticker": "NCPL",
+  "source_input_commit": "4ddae13b5b0d089658162ab322950d67f0d6852f",
+  "prior_score": 17,
+  "new_score": 17,
+  "coverage": 68,
+  "new_early_signal": {
+    "triggered": true,
+    "as_of": "2026-10-22T17:30:00Z",
+    "basis": "IEX 지연 5분봉 · 당일 +5%·평균 일 거래대금 0.3배·VWAP 상단·가격 유지",
+    "short_verified": false
+  },
+  "intraday_metrics": {
+    "daily_change_pct": 58.28025477707004,
+    "session_dollar_ratio": 1.7512265252006551,
+    "valid": true,
+    "as_of": "2026-10-22T17:30:00Z",
+    "price": 2.485,
+    "vwap": 2.2734405866150817,
+    "above_vwap": true,
+    "breakout": false,
+    "major_resistance": 2.65,
+    "dollar_ratio": 0.22129349753538663,
+    "retention": 1.0,
+    "low_defense": true,
+    "scope": "IEX 5분봉 · 최소20분 지연 · VWAP는 당일 관측 범위"
+  },
+  "verdict": "Same observed-time replay only; not evidence of pre-spike detection"
+}
