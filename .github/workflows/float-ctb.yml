@@ -24,10 +24,4 @@ jobs:
       - run: python -m unittest discover -s tests -v
       - run: python -m hunter.float_ctb
       - name: Persist enrichment
-        run: |
-          git config user.name "breakout-hunter-bot"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/enrichment.json
-          git diff --cached --quiet || git commit -m "Refresh source-reported float and borrow observations [skip ci]"
-          git pull --rebase origin main
-          git push
+        run: python -m hunter.persist enrichment
