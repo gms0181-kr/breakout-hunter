@@ -162,6 +162,10 @@ def classify(signals,m,intra):
 
 def update_history(previous,rows,now):
     states=dict(previous.get('states',{}));history=list(previous.get('history',[]));alerts=list(previous.get('alerts',[]));last=previous.get('last',{});new_last={};seen={x['id'] for x in alerts}
+    for alert in alerts:
+        source_at=instant(alert.get('source_at'));occurred=instant(alert.get('occurred_at'))
+        if alert.get('kind')=='new_supply_disclosure' and source_at and occurred and (occurred-source_at).total_seconds()>86400:
+            alert['original_kind']='new_supply_disclosure';alert['kind']='historical_supply_discovery';alert['evidence']='과거 공시의 희석 문구 신규 수집 · 신규 공시 발생 또는 즉시 출회 확정 아님'
     def emit(ticker,kind,before,after,evidence,stamp):
         # Source timestamp + signal type identifies an observation, independent of scan time.
         key=ticker+'|'+kind+'|'+str(stamp)
@@ -179,8 +183,11 @@ def update_history(previous,rows,now):
         if finite(prev_score) and finite(score) and score-prev_score>=8 and prior.get('pressure_coverage')==c['coverage']:emit(t,'pressure_jump',prev_score,score,'동일 커버리지에서 숏 압박 8점 이상 증가',b.get('as_of'))
         if stage in ('IGNITION','EXPANSION') and a['market'].get('breakout'):emit(t,'breakout_inflow',None,stage,a['stage_reason'],a['market'].get('as_of'))
         risky=set(a['dilution'].get('flags',[])) & {'ATM','ELOC','PIPE','RD','RESALE','CONVERTIBLE','WARRANT'}
-        new_flags=risky-set(prior.get('risk_flags',[]))
-        if prior and new_flags:emit(t,'new_supply_disclosure',prior.get('risk_flags'),sorted(risky),'신규 희석 관련 문구; 즉시 출회 확정 아님',max((x.get('accepted_at','') for x in a['dilution'].get('documents',[])),default=now.isoformat()))
+        cutoff=instant(previous.get('updated_at')) or now-timedelta(days=1)
+        new_docs=[x for x in a['dilution'].get('documents',[]) if instant(x.get('accepted_at')) and cutoff<instant(x['accepted_at'])<=now and age_ok(x['accepted_at'],now,1)]
+        announced={flag for doc in new_docs for flag in doc.get('flags',[])}
+        new_flags=(risky-set(prior.get('risk_flags',[]))) & announced
+        if prior and new_flags:emit(t,'new_supply_disclosure',prior.get('risk_flags'),sorted(risky),'직전 스캔 후 SEC 접수된 공시의 신규 희석 문구; 즉시 출회 확정 아님',max(x['accepted_at'] for x in new_docs))
         new_last[t]={'pressure_score':score,'pressure_coverage':c['coverage'],'risk_flags':sorted(risky)}
     # Missing symbols cannot silently retain an active stage from an earlier run.
     for t in set(states)-{a['ticker'] for a in rows}:

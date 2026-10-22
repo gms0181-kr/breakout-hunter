@@ -77,7 +77,7 @@ list may correctly be empty. Research observations are not recommendations.
 
 Site-internal alerts cover CTB +20pp, borrow decrease>=50%, same-coverage
 short-pressure +8 points, stage changes (including down/unconfirmed),
-price breakout + turnover, and newly discovered dilution disclosure flags.
+price breakout + turnover, and newly accepted SEC dilution disclosures. Old filings first retrieved today are labeled historical discoveries, never new announcements.
 Dedup ID is ticker/type/source timestamp. No external message channel is
 assumed connected or used.
 
