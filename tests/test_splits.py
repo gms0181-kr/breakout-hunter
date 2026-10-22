@@ -20,6 +20,22 @@ class SplitPolicyTests(unittest.TestCase):
         for ratio,want in [('1-for-10',True),('10-for-1',False)]:
             stock={'enrichment':{'float':{'sources':[{'last_split_date':'2026-10-20','last_split':ratio}]}}}
             self.assertEqual(recent_reverse_split(stock,NOW),want)
+    def test_recent_reverse_split_is_price_exception_not_exclusion(self):
+        base={'name':'Company Inc.','market_cap':1000000}
+        for price in (1,9.99,10,30):
+            for days,allowed in ((0,True),(30,True),(31,price<10),(-1,price<10)):
+                stock={**base,'price':price,'split_check':{'events':[{'ex_date':(NOW-timedelta(days=days)).date().isoformat()}]}}
+                self.assertEqual(scope_reason(stock,now=NOW) is None,allowed,(price,days))
+    def test_cached_reverse_split_allows_high_trade_price(self):
+        stock={'name':'Company Inc.','market_cap':1000000,'price':9,'halt_check':{'trade_price':30},'enrichment':{'float':{'sources':[{'last_split_date':'2026-10-20','last_split':'1-for-30 (reverse)'}]}}}
+        self.assertIsNone(scope_reason(stock,now=NOW))
+        stock['enrichment']['float']['sources'][0]['last_split']='30-for-1'
+        self.assertEqual(scope_reason(stock,now=NOW),'price_at_or_above_10')
+    def test_reverse_split_does_not_override_security_or_cap(self):
+        stock={'name':'Company Inc.','price':30,'market_cap':3000000000,'split_check':{'events':[{'ex_date':'2026-10-20'}]}}
+        self.assertEqual(scope_reason(stock,now=NOW),'above_smallcap_limit')
+        stock.update(name='Company ETF',market_cap=1000000)
+        self.assertEqual(scope_reason(stock,now=NOW),'fund_or_non_common_security')
     def test_symbol_change_matches_both_symbols(self):
         stocks=[{'ticker':'OLD'},{'ticker':'NEW'},{'ticker':'OTHER'}]
         apply(stocks,{'status':'ok','events':[{'symbol':'OLD','new_symbol':'NEW','ex_date':'2026-10-20'}]})

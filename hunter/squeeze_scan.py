@@ -122,6 +122,7 @@ async def collect():
         for t,s in stocks.items():
             s['bars']=histories.get(t,[]);b=s['bars'][-1] if s['bars'] else {};s['price']=b.get('close');s['price_as_of']=b.get('time');s['change_pct']=None;audit[t]['daily_received']=bool(s['bars']);audit[t]['price_as_of']=s['price_as_of']
             s['toss_orderable']=None
+            s['enrichment']=symbols.get(t,{})
             reason=scope_reason(s)
             audit[t]['scope_reason']=reason
             if reason:excluded[reason]+=1

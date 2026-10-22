@@ -4,6 +4,8 @@ on:
     branches: [main]
     paths:
       - 'hunter/squeeze_*.py'
+      - 'hunter/scope.py'
+      - 'tests/test_splits.py'
       - 'tests/test_squeeze_hunter.py'
       - '.github/workflows/squeeze-hunter.yml'
   workflow_dispatch:

@@ -30,7 +30,7 @@ def recent_reverse_split(stock,now=None):
         except (KeyError,TypeError,ValueError):pass
     return False
 
-def scope_reason(stock,cap=MAX_CAP,include_trading=True):
+def scope_reason(stock,cap=MAX_CAP,include_trading=True,now=None):
     reason=security_reason(stock)
     if reason:return reason
     value=stock.get('market_cap')
@@ -40,8 +40,7 @@ def scope_reason(stock,cap=MAX_CAP,include_trading=True):
         price=stock.get('price')
         if not known(price) or price<=0:return 'price_unverified'
         trade=stock.get('halt_check',{}).get('trade_price')
-        if price>=10 or (known(trade) and trade>=10):return 'price_at_or_above_10'
-        if recent_reverse_split(stock):return 'reverse_split_within_30_days'
+        if (price>=10 or (known(trade) and trade>=10)) and not recent_reverse_split(stock,now):return 'price_at_or_above_10'
     return None
 
 def in_scope(stock,cap=MAX_CAP):return scope_reason(stock,cap) is None
@@ -50,5 +49,5 @@ def filter_report(report):
     cap=report.get('config',{}).get('market_cap_max',MAX_CAP)
     for group in ('top10','last_top10','research_top10','watchlist','verification_candidates'):
         report[group]=[s for s in report.get(group,[]) if in_scope(s,cap)]
-    report['candidate_scope']={'market_cap_max':min(cap,MAX_CAP),'price_max_exclusive':10,'reverse_split_exclusion_days':30,'security_types':'operating-company common shares / ADS','excluded':'funds, ETF/ETN, income/investment trusts, bonds, preferred, warrants, rights, units, REIT/BDC, SPAC'}
+    report['candidate_scope']={'market_cap_max':min(cap,MAX_CAP),'price_max_exclusive':10,'reverse_split_price_exception_days':30,'reverse_split_exclusion_days':0,'security_types':'operating-company common shares / ADS','excluded':'funds, ETF/ETN, income/investment trusts, bonds, preferred, warrants, rights, units, REIT/BDC, SPAC'}
     return report
