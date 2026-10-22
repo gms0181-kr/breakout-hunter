@@ -17,6 +17,11 @@ async def main():
             assert response and response.status==200
             await page.wait_for_function("report !== null",timeout=30000)
             assert await page.title()=="BREAKOUT HUNTER 1.0"
+            await page.locator("#scan-now").click()
+            assert await page.locator("#manual-dialog").is_visible()
+            assert await page.locator("#manual-launch").get_attribute("href")=="https://github.com/gms0181-kr/breakout-hunter/actions/workflows/scan.yml"
+            await page.locator("#manual-close").click()
+            assert not await page.locator("#manual-dialog").is_visible()
             refresh_verified=False
             if name=="desktop":
                 async with page.expect_response(lambda r: "/data.json?t=" in r.url,timeout=75000) as refreshed:
