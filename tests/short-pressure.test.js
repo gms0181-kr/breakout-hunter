@@ -1,0 +1,15 @@
+const test=require('node:test'),assert=require('node:assert/strict'),E=require('../public/squeeze-engine.js');
+const now=Date.parse('2026-10-22T20:00:00Z'),d=x=>new Date(now-x*86400000).toISOString();
+const borrow={ctb:120,available:0,as_of:d(0),lender:'Interactive Brokers',source:'https://chartexchange.com/symbol/nasdaq-test/borrow-fee/'};
+const history=[{...borrow,ctb:80,available:100000,as_of:new Date(now-3600000).toISOString()}];
+const bars=Array.from({length:70},(_,i)=>({time:d(70-i),open:1,high:1.15,low:.9,close:1,volume:100,vwap:1.01,complete:true}));
+bars[69]={...bars[69],open:1.05,high:1.3,close:1.28,volume:1000,vwap:1.1};
+const obs={borrow,borrow_history:history,short_interest:{status:'source_reported_official',official_origin:'FINRA',settlement_date:'2026-10-15',float_pct:25,change_pct:30,previous:{settlement_date:'2026-09-30'}}};
+test('missing data remains unknown, not zero or renormalized',()=>{let r=E.analyze({}, {},now);assert.equal(r.total_score,null);assert.equal(r.observed_score,null);assert.equal(r.coverage,0);assert(Object.values(r.components).every(x=>x===null))});
+test('all observed weights can earn 100, independent of other engines',()=>{let r=E.analyze({bars},obs,now);assert.equal(r.coverage,100);assert.equal(r.observed_score,100);assert.equal(r.total_score,100)});
+test('single current observation gives only known coverage and preserves zero availability',()=>{let r=E.analyze({}, {borrow},now);assert.equal(r.coverage,25);assert.equal(r.observed_score,25);assert.equal(r.availableDelta,null);assert.equal(r.total_score,null)});
+test('stale, future and failed borrower updates do not score',()=>{for(const b of [{...borrow,as_of:d(3)},{...borrow,as_of:d(-1)},{...borrow,stale:true}])assert.equal(E.analyze({}, {borrow:b},now).coverage,0)});
+test('history deduplicates timestamps and never compares different lenders or future data',()=>{let r=E.analyze({}, {borrow,borrow_history:[{...history[0],lender:'Other'}, {...borrow,as_of:d(-1)},borrow,borrow]},now);assert.equal(r.prior,undefined);assert.equal(r.ctbDelta,null);assert.equal(r.history.length,1)});
+test('official source, settlement age and share-basis conflicts gate SI score',()=>{for(const si of [{...obs.short_interest,official_origin:'unknown'},{...obs.short_interest,settlement_date:'2026-01-01'},{...obs.short_interest,float_pct:139}])assert.equal(E.analyze({}, {short_interest:si},now).components.interest,null);assert.equal(E.analyze({split_check:{events:[{ex_date:'2026-10-20'}]}},obs,now).components.interest,null)});
+test('malformed, partial and future bars excluded; insufficient bars do not make a chart or zone',()=>{assert.equal(E.validBars({bars:[{...bars[0],close:99}, {...bars[0],complete:false},{...bars[0],time:d(-1)}]},now).length,0);assert.deepEqual(E.zones(bars.slice(0,3),1),[])});
+test('zones conserve actual input volume as disclosed representative-price proxy',()=>{let z=E.zones(bars,1.28);assert.equal(z.length,3);assert.equal(z.reduce((s,x)=>s+x.volume_proxy,0),bars.slice(-60).reduce((s,x)=>s+x.volume,0));assert(z.every(x=>x.note.includes('숏 진입가 아님')))});

@@ -110,6 +110,8 @@ async def screener_metadata(session):
 async def collect(config):
     async with aiohttp.ClientSession() as session:
         stocks,failures=await universe(session)
+        from .market_session import collect as market_session
+        config["_market_calendar"]=await market_session(session)
         metadata,metadata_errors=await screener_metadata(session)
         failures+=metadata_errors
         source_count=len(stocks)
