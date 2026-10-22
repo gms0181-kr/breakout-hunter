@@ -6,7 +6,7 @@ on:
       - 'public/**'
       - '.github/workflows/pages.yml'
   workflow_run:
-    workflows: ['Test and collect', 'Refresh halt checks', 'Enrich float and borrow']
+    workflows: ['Test and collect', 'Refresh halt checks', 'Enrich float and borrow', 'Short Squeeze Hunter']
     types: [completed]
   workflow_dispatch:
 permissions:

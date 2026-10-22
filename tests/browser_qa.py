@@ -97,6 +97,32 @@ async def main():
             assert not await page.evaluate("document.documentElement.scrollWidth > innerWidth"),'terminal horizontal overflow'
             await page.locator('a[href="#scan"]').click()
             await page.wait_for_function("!document.body.classList.contains('sq-mode')",timeout=15000)
+            await page.locator('a[href="#squeeze-hunter"]').click()
+            await page.wait_for_function("document.body.classList.contains('sh-mode')",timeout=15000)
+            await page.wait_for_function("!document.getElementById('sh-refresh').disabled",timeout=60000)
+            assert await page.locator('#squeeze-hunter').is_visible()
+            independent_count=await page.locator('#sh-list [data-sh-select]').count()
+            if independent_count:
+                first=page.locator('#sh-list [data-sh-select]').first
+                selected_hunter=await first.get_attribute('data-sh-select')
+                await first.click()
+                assert selected_hunter in await page.locator('#sh-detail h2').inner_text()
+                assert await page.locator('#sh-detail .sh-stage-track>div').count()==5
+                assert await page.locator('#sh-detail .sq-grid5 .sq-panel').count()==5
+                await page.locator('#sh-search').fill('__NO_MATCH_INDEPENDENT__')
+                assert await page.locator('#sh-list [data-sh-select]').count()==0
+                await page.locator('#sh-search').fill('')
+                assert await page.locator('#sh-list [data-sh-select]').count()==independent_count
+                await page.locator('[data-sh-period="5D"]').click()
+                assert await page.locator('[data-sh-period="5D"]').get_attribute('aria-pressed')=='true'
+                assert await page.locator('#sh-top10 tbody tr').count()<=10
+                assert await page.locator('#sh-research tbody tr').count()<=10
+            else:
+                assert '수집' in await page.locator('#sh-status').inner_text()
+            await page.screenshot(path=f"qa/hunter-{name}.png",full_page=False,timeout=20000)
+            assert not await page.evaluate("document.documentElement.scrollWidth > innerWidth"),'independent hunter horizontal overflow'
+            await page.locator('a[href="#scan"]').click()
+            await page.wait_for_function("!document.body.classList.contains('sh-mode')",timeout=15000)
             if width<768 and await page.locator("#rows [data-ticker]").count():
                 assert await page.locator("#rows tr").first.evaluate("el=>getComputedStyle(el).display")=="grid"
                 assert await page.locator("#rows tr").first.locator("td").nth(5).get_attribute("data-label")=="Float"

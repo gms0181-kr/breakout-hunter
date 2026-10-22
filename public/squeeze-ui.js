@@ -64,6 +64,7 @@ function renderCalendar(){
  target.innerHTML=docs.length?docs.map(d=>'<p>'+E(d.filed)+' · '+E(d.ticker)+' · '+link(d.source,d.form||'공시')+'</p>').join(''):'<p>현재 저장 후보의 확인된 공시 일정이 없습니다.</p>';
 }
 function route(){const active=location.hash.startsWith('#short-squeeze');document.body.classList.toggle('sq-mode',active);$id('short-squeeze').hidden=!active;document.querySelectorAll('.sidebar nav a').forEach(a=>a.classList.toggle('active',active?a.getAttribute('href')==='#short-squeeze':a.getAttribute('href')===(location.hash||'#dashboard')));if(active){const ticker=decodeURIComponent(location.hash.split('/')[1]||'');if(ticker)selected=ticker;render();window.scrollTo({top:0})}}
+window.BHChart={render:(stock,obs,p)=>{period=p;const a=S.analyze(stock,obs||{});return {price:candleChart(a),map:zoneMap(a,stock.price)}}};
 function boot(){
  $id('sq-search').oninput=e=>{query=e.target.value;renderList()};$id('sq-sort').onchange=e=>{sort=e.target.value;renderList()};
  $id('sq-refresh').onclick=async()=>{const b=$id('sq-refresh');b.disabled=true;b.textContent='갱신 중';try{await refresh();render()}finally{b.disabled=false;b.textContent='저장 결과 새로고침'}};
