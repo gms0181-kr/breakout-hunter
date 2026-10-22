@@ -1,7 +1,7 @@
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),E=escapeHtml,N=(v,u='',d=2)=>Number.isFinite(v)?v.toLocaleString('ko-KR',{maximumFractionDigits:d})+(u?'('+u+')':''):'미확인';
-const alertNames={ctb_surge:'CTB 급등',borrow_drop:'대차 잔량 급감',pressure_jump:'숏 압박 점수 상승',stage_change:'단계 변경',breakout_inflow:'저항 돌파·거래대금 증가',new_supply_disclosure:'신규 희석 관련 공시',historical_supply_discovery:'과거 희석 공시 신규 수집'};
+const alertNames={ctb_surge:'CTB 급등',borrow_drop:'대차 잔량 급감',pressure_jump:'숏 압박 점수 상승',stage_change:'단계 변경',market_early_watch:'가격·거래대금 선행 관찰',breakout_inflow:'저항 돌파·거래대금 증가',new_supply_disclosure:'신규 희석 관련 공시',historical_supply_discovery:'과거 희석 공시 신규 수집'};
 const alertKind=x=>x.kind==='new_supply_disclosure'&&Date.parse(x.occurred_at)-Date.parse(x.source_at)>86400000?'historical_supply_discovery':x.kind;
 const Labels=window.SqueezeLabels,names={short_pressure:'SHORT PRESSURE',capital_inflow:'CAPITAL INFLOW',price_structure:'PRICE STRUCTURE',dilution_gap:'DILUTION GAP',catalyst:'CATALYST'};
 const Store=window.SqueezeStore;let data=null,selected='',query='',filter='all',loadError='',limit=150;
@@ -19,6 +19,8 @@ function renderTop(){
  $('sh-summary').innerHTML=numCard('전체 상장 목록',N(c.listed,'종목',0),'상장 목록 '+(c.listing_complete?'수집 성공':'일부 실패')+' · 시총 확인 '+N(c.metadata,'종목',0))+numCard('소형주 독립 재평가',N(c.in_scope,'종목',0),'일봉 '+N(c.daily_received,'종목',0)+' / 요청 '+N(c.daily_attempted,'종목',0))+numCard('유효 CTB · 공식 SI',N(c.ctb_valid,'종목',0)+' / '+N(c.si_valid,'종목',0),'이번 대차 조회 '+N(c.borrow_attempted_this_run,'종목',0)+' · 미관측 '+N(c.unobserved_borrow,'종목',0))+numCard('연구 후보 · 실전 후보',N(data.research_top10.length,'종목',0)+' / '+N(data.top10.length,'종목',0),'실전 후보는 희석·토스 주문 확인 필요');
  $('sh-top10').innerHTML=table(data.top10);
  $('sh-research').innerHTML=table(data.research_top10);
+ $('sh-early').innerHTML=table(data.early_watch||[]);
+ $('sh-diagnostics').innerHTML=(data.diagnostics||[]).map(x=>'<article><h4>'+E(x.ticker)+' · '+E(x.name)+'</h4><p>수집 '+when(x.observed_at)+' · 탐색 제외: '+E(x.scope_reason||'통과')+' · 5분봉 조회 '+(x.intraday_attempted?'포함':'미포함')+' · 연구 TOP10: '+E(x.top10_reason)+'</p><pre>'+E(Labels.text(JSON.stringify(x,null,2)))+'</pre></article>').join('')||'<p>새 진단 수집본 생성 대기</p>';
  $('sh-risk').innerHTML=table(data.high_risk);
  $('sh-quality').innerHTML='<p>'+E(data.source_scope)+'</p><p>'+E(data.schedule.note)+'</p><p>'+E(data.schedule.market_feed)+' · '+E(data.session.warning||'')+'</p><p>Fintel: '+E(data.fintel.status)+' · CTB/잔량 교차검증 '+(data.fintel.cross_verified?'완료':'미완료')+'</p><p>환율 '+(data.fx?N(data.fx.rate,'원')+' · '+E(data.fx.as_of)+' · '+link(data.fx.source,'출처'):'미확인')+'</p><p>SEC 원문 확인 '+N(c.sec_documents,'종목',0)+' · 조회 예산과 공급 조건 확정은 별개</p><ul>'+data.limits.map(x=>'<li>'+E(x)+'</li>').join('')+'</ul><details><summary>제외 집계·수집 실패</summary><pre>'+E(JSON.stringify({excluded:c.excluded,failures:data.failures,split_feed:c.split_feed},null,2))+'</pre></details>';
  const back=data.backtest;
@@ -32,7 +34,7 @@ function renderList(){if(!data)return;const saved=Store.getFavorites();let rows=
 }
 function bindSelect(el){el.querySelectorAll('[data-sh-select]').forEach(b=>b.onclick=()=>SqueezeUI.open(b.dataset.shSelect))}
 function renderSelection(){const r=Store.getRecord();$('sh-detail').innerHTML=r?'<article class="sq-panel"><div class="sq-kicker">선택 종목 · 분석 화면과 공통 데이터</div><h2>'+E(r.ticker)+' <small>'+E(r.name)+'</small></h2><p>'+N(r.analysis.observed_score,'점')+' · 확인 '+r.analysis.coverage+'% · '+chip(r.analysis.stage)+'</p><p>공통 수집 '+when(data.updated_at)+'</p><p><a class="button" href="#short-squeeze/'+encodeURIComponent(r.ticker)+'">숏스퀴즈 분석 열기 →</a></p></article>':'<p>현재 수집본에 선택 종목 없음</p>'}
-function renderAlerts(){$('sh-alerts').innerHTML=SqueezeUI.alertsHTML(data.monitor?.alerts||[])}
+function renderAlerts(){const d=data.monitor?.delivery;$('sh-alerts').innerHTML='<p>외부 전달: '+E(d?.status||'검증 안 됨')+' · '+E(d?.note||'사이트 내부 기록만 확인')+' · 이번 HTTP 수신 '+N(d?.accepted_this_run,'건',0)+' · 실패 '+N(d?.failed_this_run,'건',0)+'</p>'+SqueezeUI.alertsHTML(data.monitor?.alerts||[])}
 function render(){data=Store.getSnapshot();selected=Store.getSelected();loadError=Store.getError();$('sh-refresh').disabled=Store.isLoading();if(!data){$('sh-status').textContent=loadError||'공통 수집본 조회 중';return}renderTop();renderList();renderSelection();renderAlerts();$('squeeze-hunter').dataset.snapshotId=data.snapshot_id}
 function route(){const active=location.hash.startsWith('#squeeze-hunter');document.body.classList.toggle('sh-mode',active);$('squeeze-hunter').hidden=!active;if(active){const t=decodeURIComponent(location.hash.split('/')[1]||'');if(t){SqueezeUI.open(t,true);return}document.querySelectorAll('.sidebar nav a').forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#squeeze-hunter'));if(!Store.getSnapshot())Store.refresh();render();window.scrollTo({top:0})}}
 $('sh-search').oninput=e=>{query=e.target.value;limit=150;renderList()};$('sh-filter').onchange=e=>{filter=e.target.value;limit=150;renderList()};$('sh-refresh').onclick=()=>Store.refresh();Store.subscribe(()=>{if(document.body.classList.contains('sh-mode'))render()});window.addEventListener('hashchange',route);route();

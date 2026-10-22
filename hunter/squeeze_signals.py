@@ -83,7 +83,10 @@ def intraday_metrics(stock,now):
     if len(bars)<8:return {'valid':False,'reason':'현재 세션 표본 부족'}
     vols=sum(x['volume'] for x in bars);vwap=sum((x['vwap'] if finite(x.get('vwap')) and x['vwap']>0 else x['close'])*x['volume'] for x in bars)/vols if vols else None
     base=bars[-7:-1];daily=safe_bars(stock.get('bars'),now);major=max((x['high'] for x in daily[-20:]),default=None);avg=mean(x['close']*x['volume'] for x in base);ratio=b['close']*b['volume']/avg if avg>0 else None
-    return {'valid':True,'as_of':b['time'],'price':b['close'],'vwap':vwap,'above_vwap':b['close']>=vwap if vwap else None,'breakout':bool(major and b['close']>max(major,max(x['high'] for x in base))),'major_resistance':major,'dollar_ratio':ratio,'retention':(b['close']-b['low'])/(b['high']-b['low']) if b['high']>b['low'] else None,'low_defense':b['low']>=min(x['low'] for x in base)*.98,'scope':'IEX 5분봉 · 최소20분 지연 · VWAP는 당일 관측 범위'}
+    prior_days=[x for x in daily if instant(x['time']).astimezone(ZoneInfo('America/New_York')).date()<today]
+    prior_close=prior_days[-1]['close'] if prior_days else None
+    avg_day=mean(x['close']*x['volume'] for x in prior_days[-20:]) if len(prior_days)>=20 else None
+    return {'daily_change_pct':pct(b['close'],prior_close),'session_dollar_ratio':sum(x['close']*x['volume'] for x in bars)/avg_day if avg_day else None,'valid':True,'as_of':b['time'],'price':b['close'],'vwap':vwap,'above_vwap':b['close']>=vwap if vwap else None,'breakout':bool(major and b['close']>max(major,max(x['high'] for x in base))),'major_resistance':major,'dollar_ratio':ratio,'retention':(b['close']-b['low'])/(b['high']-b['low']) if b['high']>b['low'] else None,'low_defense':b['low']>=min(x['low'] for x in base)*.98,'scope':'IEX 5분봉 · 최소20분 지연 · VWAP는 당일 관측 범위'}
 
 def dilution(sec,now):
     # Reuse source-linked instrument facts, never an unverified safe/unsafe label.
@@ -145,9 +148,14 @@ def analyze(stock,obs,now=None):
     observed=sum(x['score'] or 0 for x in components.values()) if any(x['score'] is not None for x in components.values()) else None
     coverage=sum(x['coverage'] for x in components.values());stage,reason=classify(signals,m,intra)
     high_risk=d['status']=='즉시 출회 위험 높음';candidate=len(signals)>=2 and bool(m.get('valid') and m.get('fresh')) and p['coverage']>=8 and coverage>=45
+    from .squeeze_discovery import market_probe,early_signal
+    early=early_signal(market_probe(stock,now),intra)
     halted=stock.get('halt_status')=='halted'
+    early['triggered']=bool(early.get('triggered') and not halted)
+    candidate_type='short_verified' if candidate else 'market_watch' if early['triggered'] else None
     ready='진입 보류 · 핵심 자료 부족' if not candidate else '고위험 관찰' if high_risk else '추격 주의' if m.get('chase_risk') else '조건 관찰 · 희석·토스 주문 확인 필요' if stage in STAGES[2:] else '점화 전 대기'
-    return {'ticker':stock['ticker'],'observed_score':observed,'total_score':observed if coverage==100 else None,'coverage':coverage,'components':components,'signals':signals,'stage':stage,'stage_reason':reason,'stage_basis':'지연 5분봉' if intra.get('valid') else '완료 일봉 · 장중 단계 아님','candidate':candidate and not halted,'high_risk':high_risk,'entry_readiness':ready,'dilution':d,'ctb':ctb,'official_interest':{**si,'scoring_valid':si_valid,'published_at':si.get('published_at'),'publication_note':'공급자 최초 공개시각 미제공; 수집시각 이전 소급 사용 금지'},'market':m,'intraday':intra,'events':events,'confidence':'높음' if coverage>=90 else '중간' if coverage>=60 else '낮음','toss_orderable':stock.get('toss_orderable') is True,'as_of':now.isoformat()}
+    if not candidate and early['triggered']:ready='가격·거래대금 선행 관찰 · 숏 압박 미검증 · 매수 조건 아님'
+    return {'ticker':stock['ticker'],'observed_score':observed,'total_score':observed if coverage==100 else None,'coverage':coverage,'components':components,'signals':signals,'stage':stage,'stage_reason':reason,'stage_basis':'지연 5분봉' if intra.get('valid') else '완료 일봉 · 장중 단계 아님','candidate':(candidate or early['triggered']) and not halted,'candidate_type':candidate_type,'early_signal':early,'high_risk':high_risk,'entry_readiness':ready,'dilution':d,'ctb':ctb,'official_interest':{**si,'scoring_valid':si_valid,'published_at':si.get('published_at'),'publication_note':'공급자 최초 공개시각 미제공; 수집시각 이전 소급 사용 금지'},'market':m,'intraday':intra,'events':events,'confidence':'높음' if coverage>=90 else '중간' if coverage>=60 else '낮음','toss_orderable':stock.get('toss_orderable') is True,'as_of':now.isoformat()}
 
 def classify(signals,m,intra):
     """Stateless reassessment defines both entry and downgrade; jumps allowed."""
@@ -171,7 +179,8 @@ def update_history(previous,rows,now):
     def emit(ticker,kind,before,after,evidence,stamp):
         # Source timestamp + signal type identifies an observation, independent of scan time.
         key=ticker+'|'+kind+'|'+str(stamp)
-        if key not in seen:
+        recent=[x for x in alerts if x.get('ticker')==ticker and x.get('kind')==kind and instant(x.get('occurred_at')) and 0<=(now-instant(x['occurred_at'])).total_seconds()<1800]
+        if key not in seen and not (kind in ('market_early_watch','breakout_inflow','ctb_surge','borrow_drop') and recent):
             alerts.append({'id':key,'ticker':ticker,'kind':kind,'occurred_at':now.isoformat(),'source_at':stamp,'previous':before,'current':after,'evidence':evidence,'channel':'사이트 내부 알림'});seen.add(key)
     for a in rows:
         t=a['ticker'];old=states.get(t);stage=a['stage'];prior=last.get(t,{})
@@ -183,6 +192,8 @@ def update_history(previous,rows,now):
             if (b.get('previous_change_pp') or 0)>=20:emit(t,'ctb_surge',b.get('previous'),b.get('current'),'CTB 직전 관측 대비 20%p 이상 상승',b['as_of'])
             if (b.get('available_drop_pct') or 0)>=50:emit(t,'borrow_drop',b.get('previous_available'),b.get('available'),'공급원 잔량 50% 이상 감소',b['as_of'])
         if finite(prev_score) and finite(score) and score-prev_score>=8 and prior.get('pressure_coverage')==c['coverage']:emit(t,'pressure_jump',prev_score,score,'동일 커버리지에서 숏 압박 8점 이상 증가',b.get('as_of'))
+        early=a.get('early_signal',{})
+        if early.get('triggered'):emit(t,'market_early_watch',prior.get('early_triggered'),True,early['basis']+' · 숏스퀴즈 확정 아님',early.get('as_of'))
         if stage in ('IGNITION','EXPANSION') and a['market'].get('breakout'):emit(t,'breakout_inflow',None,stage,a['stage_reason'],a['market'].get('as_of'))
         risky=set(a['dilution'].get('flags',[])) & {'ATM','ELOC','PIPE','RD','RESALE','CONVERTIBLE','WARRANT'}
         cutoff=instant(previous.get('updated_at')) or now-timedelta(days=1)
@@ -190,7 +201,7 @@ def update_history(previous,rows,now):
         announced={flag for doc in new_docs for flag in doc.get('flags',[])}
         new_flags=(risky-set(prior.get('risk_flags',[]))) & announced
         if prior and new_flags:emit(t,'new_supply_disclosure',prior.get('risk_flags'),sorted(risky),'직전 스캔 후 SEC 접수된 공시의 신규 희석 문구; 즉시 출회 확정 아님',max(x['accepted_at'] for x in new_docs))
-        new_last[t]={'pressure_score':score,'pressure_coverage':c['coverage'],'risk_flags':sorted(risky)}
+        new_last[t]={'pressure_score':score,'pressure_coverage':c['coverage'],'risk_flags':sorted(risky),'early_triggered':bool(early.get('triggered'))}
     # Missing symbols cannot silently retain an active stage from an earlier run.
     for t in set(states)-{a['ticker'] for a in rows}:
         if states[t] is not None:history.append({'ticker':t,'at':now.isoformat(),'previous':states[t],'current':None,'reason':'현재 탐색 범위 제외 또는 데이터 없음'})

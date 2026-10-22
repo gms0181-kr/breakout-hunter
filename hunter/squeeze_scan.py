@@ -10,6 +10,7 @@ from collections import Counter
 import aiohttp
 from . import providers
 from .scope import scope_reason
+from .squeeze_discovery import select_borrow,select_intraday,market_probe
 from .squeeze_signals import analyze,instant,finite,update_history,safe_bars
 ROOT=Path('public')
 def read(name,default):
@@ -17,12 +18,7 @@ def read(name,default):
     except (OSError,ValueError):return default
 
 def due_targets(stocks,cache,now,budget):
-    def stamp(s):
-        d=instant(cache.get(s['ticker'],{}).get('attempted_at'))
-        return d.timestamp() if d else 0
-    due=[s for s in stocks if now.timestamp()-stamp(s)>=900]
-    # Whole universe fairness, no volume/legacy rank prefilter.
-    return sorted(due,key=lambda s:(stamp(s),s['ticker']))[:budget]
+    return select_borrow(stocks,cache,now,budget)
 
 def merge_observation(prior,current):
     history={x['as_of']:x for x in prior.get('borrow_history',[]) if x.get('as_of')}
@@ -111,9 +107,10 @@ async def collect():
     async with aiohttp.ClientSession() as session:
         all_stocks,listing_errors=await providers.universe(session);metadata,errors=await providers.screener_metadata(session);failures+=listing_errors+errors
         coverage['listed']=len(all_stocks);coverage['listing_complete']=not listing_errors;coverage['metadata']=len(metadata)
-        stocks={};excluded=Counter()
+        stocks={};excluded=Counter();audit={t:{'listed':True,'name':v.get('name'),'observed_at':now.isoformat(),'listing_source':'NASDAQ Trader symbol directory','daily_received':False} for t,v in all_stocks.items()}
         for t,s in all_stocks.items():
             s.update(metadata.get(t,{}));reason='warrant_depositary_security' if 'ADW' in s.get('name','') else scope_reason(s,include_trading=False)
+            audit[t]['scope_reason']=reason
             if reason:excluded[reason]+=1
             else:stocks[t]=s
         histories,errors=await providers.bars(session,sorted(stocks));failures+=errors;coverage['daily_attempted']=len(stocks);coverage['daily_received']=len(histories)
@@ -123,13 +120,14 @@ async def collect():
         calendar=await calendar_collect(session)
         selected=[]
         for t,s in stocks.items():
-            s['bars']=histories.get(t,[]);b=s['bars'][-1] if s['bars'] else {};s['price']=b.get('close');s['price_as_of']=b.get('time');s['change_pct']=None
+            s['bars']=histories.get(t,[]);b=s['bars'][-1] if s['bars'] else {};s['price']=b.get('close');s['price_as_of']=b.get('time');s['change_pct']=None;audit[t]['daily_received']=bool(s['bars']);audit[t]['price_as_of']=s['price_as_of']
             s['toss_orderable']=None
             reason=scope_reason(s)
+            audit[t]['scope_reason']=reason
             if reason:excluded[reason]+=1
             else:selected.append(s)
         coverage['in_scope']=len(selected);coverage['excluded']=dict(excluded);coverage['split_feed']={k:v for k,v in split_feed.items() if k!='events'}
-        budget=int(os.getenv('SQUEEZE_BORROW_BUDGET','160'));targets=due_targets(selected,symbols,now,budget)
+        budget=max(0,min(1000,int(os.getenv('SQUEEZE_BORROW_BUDGET','240'))));targets=due_targets(selected,symbols,datetime.now(timezone.utc),budget)
         # Existing public adapters enforce identity, source timestamp and denied-source handling.
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
             for result in await asyncio.to_thread(lambda:list(pool.map(enrich_one,targets))):
@@ -146,12 +144,16 @@ async def collect():
         current=[]
         for s in selected:
             s['enrichment']=symbols.get(s['ticker'],{})
-            if scope_reason(s):excluded[scope_reason(s)]+=1
+            if scope_reason(s):
+                audit[s['ticker']]['scope_reason']=scope_reason(s);excluded[scope_reason(s)]+=1
             else:current.append(s)
         selected=current;coverage['in_scope']=len(selected);coverage['excluded']=dict(excluded)
-        preliminary=[(s,analyze(s,symbols.get(s['ticker'],{}),now)) for s in selected]
-        short_watch=[s for s,a in sorted(preliminary,key=lambda x:(len(x[1]['signals']),x[1]['observed_score'] or -1),reverse=True) if len(a['signals'])>=2][:100]
+        screen_at=datetime.now(timezone.utc)
+        preliminary=[(s,analyze(s,symbols.get(s['ticker'],{}),screen_at)) for s in selected]
+        short_watch=select_intraday(preliminary,symbols,screen_at,max(0,min(1000,int(os.getenv('SQUEEZE_INTRADAY_BUDGET','200')))))
+        for stock in short_watch:symbols[stock['ticker']]['intraday_attempted_at']=screen_at.isoformat()
         intra,errors=await intraday(session,short_watch);coverage['intraday_attempted']=len(short_watch);coverage['intraday_received']=len(intra);coverage['intraday_errors']=errors
+        coverage['intraday_selection']='가격 선행 + 숏 압박 + 전체 종목 순환; CTB 불필요'
         ciks,errors=await providers.sec_index(session);failures+=errors
         from .sec import analyze as sec_analyze,outstanding_fact
         # SEC budget independent of legacy engine; oldest lookup among pressure candidates first.
@@ -185,21 +187,26 @@ async def collect():
         else:fintel={'status':'대상 없음','cross_verified':False}
     except Exception as exc:fintel={'status':'검증 불가 · '+('HTTP '+str(exc.code) if getattr(exc,'code',None) else type(exc).__name__),'cross_verified':False}
     ordered=sorted(rows,key=lambda x:((x[1]['observed_score'] if x[1]['observed_score'] is not None else -1),x[1]['coverage']),reverse=True)
-    valid=[(s,a) for s,a in ordered if a['candidate'] and not a['high_risk'] and s['halt_status'] in ('no_halt_detected','resumed')]
+    valid=[(s,a) for s,a in ordered if a['candidate'] and a.get('candidate_type')=='short_verified' and not a['high_risk'] and s['halt_status'] in ('no_halt_detected','resumed')]
+    early_watch=sorted([(s,a) for s,a in rows if a.get('early_signal',{}).get('triggered') and s['halt_status'] in ('no_halt_detected','resumed')],key=lambda x:((x[1]['intraday'].get('daily_change_pct') or 0),x[1]['market'].get('dollar_ratio') or 0),reverse=True)[:20]
     research=valid[:10];actionable=[(s,a) for s,a in valid if a['toss_orderable'] and a['dilution']['status'] in ('희석 공백 확인','즉시 출회 가능성 낮음')][:10]
     risk=[(s,a) for s,a in ordered if a['candidate'] and a['high_risk']]
     state=update_history(read('squeeze-state.json',{}),[a for s,a in rows],finished)
+    from .squeeze_delivery import deliver
+    state['delivery']=deliver(state.get('alerts',[]),read('squeeze-state.json',{}).get('delivery',{}),finished)
     archive,backtest=replay(read('squeeze-snapshots.json',{}),rows,finished)
     # Detail storage includes independent pressure list and top observations, not legacy lists.
     detail_tickers={s['ticker'] for s in short_watch}|{s['ticker'] for s,a in ordered[:30]}
     details={s['ticker']:{'stock':{**s,'bars':s['bars'][-260:],'intraday':s['intraday'][-300:]},'observation':symbols.get(s['ticker'],{}),'analysis':a} for s,a in rows if s['ticker'] in detail_tickers}
     def summary(pair):
         s,a=pair;return {'ticker':s['ticker'],'name':s['name'],'exchange':s['exchange'],'price':s['price'],'price_as_of':s.get('price_as_of'),'change_pct':s['change_pct'],'market_cap':s.get('market_cap'),'float':symbols.get(s['ticker'],{}).get('float',{}),'short_volume':symbols.get(s['ticker'],{}).get('short_volume',{}),'outstanding_fact':s.get('outstanding_fact'),'halt_status':s['halt_status'],'analysis':a}
+    from .squeeze_audit import cases
+    diagnostics=cases(audit,rows,symbols,targets,short_watch,research,finished)
     series={}
     for s,a in rows:
         series.setdefault(s['ticker'][0],{})[s['ticker']]=[[b.get(k) for k in ('time','open','high','low','close','volume','vwap')] for b in safe_bars(s['bars'],finished)[-260:]]
     for letter,values in series.items():(ROOT/('squeeze-series-'+letter+'.json')).write_text(json.dumps({'schema_version':2,'snapshot_id':finished.isoformat(),'symbols':values},separators=(',',':'),allow_nan=False))
-    result={'schema_version':2,'snapshot_id':finished.isoformat(),'monitor':{'updated_at':state['updated_at'],'history':state['history'],'alerts':state['alerts']},'engine':'SHORT SQUEEZE HUNTER 1.0','started_at':now.isoformat(),'updated_at':finished.isoformat(),'status':'partial' if failures or coverage['unobserved_borrow'] else 'collected','source_scope':'NASDAQ/NYSE/NYSE American 전체 상장 목록에서 독립 시작; 기존 후보·점수·순위 미사용','session':session_state(calendar,finished),'market_calendar':calendar,'coverage':coverage,'failures':failures[:100],'top10':[summary(x) for x in actionable],'research_top10':[summary(x) for x in research],'high_risk':[summary(x) for x in risk[:30]],'observations':[summary(x) for x in ordered],'details':details,'fx':fx,'fintel':fintel,'backtest':backtest,'schedule':{'cron':'7,22,37,52 * * * 1-5','nominal_minutes':15,'note':'UTC 평일 · 시장 세션 포함; GitHub Actions 대기·실행 시간으로 지연 가능. 대차 160종목/회 순환; 전체 시세 매 실행 재평가','market_feed':'IEX 부분 거래소 일봉 + 숏 근거 종목 최대100개 5분봉','intraday_delay_minutes_minimum':20},'limits':['실시간·전체 시장 체결 데이터 아님','Fintel 숫자 교차검증 미완료','SEC 원문·계약 조건이 미확정이면 희석 점수 미부여','토스 실제 주문 가능 여부 미확인 종목은 실전 TOP10 제외','D-3~D-1 예측 적중률·거짓양성률 검증 자료 축적 전','공매도 실제 진입가·강제청산·청산완료 비율 추정 금지']}
+    result={'schema_version':2,'snapshot_id':finished.isoformat(),'monitor':{'updated_at':state['updated_at'],'history':state['history'],'alerts':state['alerts'],'delivery':state['delivery']},'engine':'SHORT SQUEEZE HUNTER 1.0','started_at':now.isoformat(),'updated_at':finished.isoformat(),'status':'partial' if failures or coverage['unobserved_borrow'] else 'collected','source_scope':'NASDAQ/NYSE/NYSE American 전체 상장 목록에서 독립 시작; 기존 후보·점수·순위 미사용','session':session_state(calendar,finished),'market_calendar':calendar,'coverage':coverage,'failures':failures[:100],'diagnostics':diagnostics,'universe_audit':audit,'early_watch':[summary(x) for x in early_watch],'top10':[summary(x) for x in actionable],'research_top10':[summary(x) for x in research],'high_risk':[summary(x) for x in risk[:30]],'observations':[summary(x) for x in ordered],'details':details,'fx':fx,'fintel':fintel,'backtest':backtest,'schedule':{'cron':'7,22,37,52 * * * 1-5','nominal_minutes':15,'note':'UTC 평일 · 시장 세션 포함; GitHub Actions 대기·실행 시간으로 지연 가능. 대차 기본240종목/회: 가격 선행 우선+최소 절반 전체 순환; 전체 시세 매 실행 재평가','market_feed':'IEX 부분 거래소 일봉 + 가격 선행·숏 근거·전체 순환 기본200종목 5분봉','intraday_delay_minutes_minimum':20},'limits':['실시간·전체 시장 체결 데이터 아님','Fintel 숫자 교차검증 미완료','SEC 원문·계약 조건이 미확정이면 희석 점수 미부여','토스 실제 주문 가능 여부 미확인 종목은 실전 TOP10 제외','D-3~D-1 예측 적중률·거짓양성률 검증 자료 축적 전','공매도 실제 진입가·강제청산·청산완료 비율 추정 금지']}
     for name,value in (('squeeze-hunter.json',result),('squeeze-cache.json',{**cache,'updated_at':finished.isoformat(),'symbols':symbols,'sec':sec_cache}),('squeeze-state.json',state),('squeeze-snapshots.json',archive)):(ROOT/name).write_text(json.dumps(value,ensure_ascii=False,allow_nan=False))
     print(json.dumps({'coverage':coverage,'research_top10':[s['ticker'] for s,a in research],'actionable_top10':len(actionable),'fintel':fintel,'stages':dict(Counter(a['stage'] or '미확정' for s,a in rows))},ensure_ascii=False))
     return result

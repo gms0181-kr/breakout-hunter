@@ -19,7 +19,7 @@ function normalize(input,now=Date.now()){
  const id=d.snapshot_id||d.updated_at;if(time(id)!==time(d.updated_at))throw Error('수집본 ID 불일치');
  const map=new Map();
  for(const r of d.observations){if(!TICKER.test(r.ticker)||map.has(r.ticker))throw Error('중복 또는 잘못된 티커');validateAnalysis(r.analysis,r.ticker,d.updated_at);map.set(r.ticker,r)}
- for(const group of ['top10','research_top10','high_risk']){if(!Array.isArray(d[group]))throw Error('후보 그룹 누락');const seen=new Set();d[group]=d[group].map(row=>{const r=map.get(row.ticker);if(!r||seen.has(row.ticker)||JSON.stringify(row.analysis)!==JSON.stringify(r.analysis))throw Error('후보·상세 점수 불일치: '+row.ticker);seen.add(row.ticker);return r})}
+ for(const group of ['top10','research_top10','high_risk',...(d.early_watch?['early_watch']:[])]){if(!Array.isArray(d[group]))throw Error('후보 그룹 누락');const seen=new Set();d[group]=d[group].map(row=>{const r=map.get(row.ticker);if(!r||seen.has(row.ticker)||JSON.stringify(row.analysis)!==JSON.stringify(r.analysis))throw Error('후보·상세 점수 불일치: '+row.ticker);seen.add(row.ticker);return r})}
  d.snapshot_id=id;d.details=d.details||{};
  for(const [t,x] of Object.entries(d.details)){const r=map.get(t);if(!r)continue;if(x.analysis&&JSON.stringify(x.analysis)!==JSON.stringify(r.analysis))throw Error('상세 점수 불일치: '+t);if(x.stock?.ticker!==t)throw Error('상세 티커 불일치: '+t);if(r.analysis.ctb.valid&&x.observation?.borrow&&(x.observation.borrow.ctb!==r.analysis.ctb.current||x.observation.borrow.available!==r.analysis.ctb.available||time(x.observation.borrow.as_of)!==time(r.analysis.ctb.as_of)))throw Error('상세 대차 기준 불일치: '+t);x.analysis=r.analysis}
  if(d.monitor&&time(d.monitor.updated_at)!==time(d.updated_at))throw Error('경보 수집본 시각 불일치');
