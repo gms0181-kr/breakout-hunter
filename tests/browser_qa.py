@@ -76,6 +76,27 @@ async def main():
                 await buttons.first.click()
                 assert await page.locator("#detail").is_visible()
                 await page.locator("#close").click()
+            await page.locator('a[href="#short-squeeze"]').click()
+            assert await page.locator('body').evaluate("el=>el.classList.contains('sq-mode')")
+            squeeze_count=await page.locator('[data-sq-select]').count()
+            if squeeze_count:
+                buttons_sq=page.locator('[data-sq-select]')
+                ticker=await buttons_sq.nth(min(1,squeeze_count-1)).get_attribute('data-sq-select')
+                await buttons_sq.nth(min(1,squeeze_count-1)).click()
+                assert ticker in await page.locator('#sq-detail h2').inner_text()
+                await page.locator('[data-sq-period="5D"]').click()
+                assert await page.locator('[data-sq-period="5D"]').get_attribute('aria-pressed')=='true'
+                assert await page.locator('#sq-price svg').count()==1
+                await page.locator('#sq-search').fill('__NO_MATCH_TERMINAL_QA__')
+                assert await page.locator('[data-sq-select]').count()==0
+                await page.locator('#sq-search').fill('')
+                await page.locator('#sq-sort').select_option('ticker')
+                assert await page.locator('[data-sq-select]').count()==squeeze_count
+                assert await page.locator('.sq-grid5 .sq-panel').count()==5
+            await page.screenshot(path=f"qa/squeeze-{name}.png",full_page=False,timeout=20000)
+            assert not await page.evaluate("document.documentElement.scrollWidth > innerWidth"),'terminal horizontal overflow'
+            await page.locator('a[href="#scan"]').click()
+            assert not await page.locator('body').evaluate("el=>el.classList.contains('sq-mode')")
             if width<768 and await page.locator("#rows [data-ticker]").count():
                 assert await page.locator("#rows tr").first.evaluate("el=>getComputedStyle(el).display")=="grid"
                 assert await page.locator("#rows tr").first.locator("td").nth(5).get_attribute("data-label")=="Float"

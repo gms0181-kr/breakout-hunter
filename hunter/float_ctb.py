@@ -92,6 +92,8 @@ def enrich_one(stock):
     a=observe(base,overview,ticker);time.sleep(.15)
     b=observe("https://finviz.com/quote.ashx?t="+ticker,finviz,ticker);time.sleep(.15)
     c=observe(base+"borrow-fee/",borrow,ticker)
+    from .short_reports import official_interest
+    si=observe(base+"short-interest/",official_interest,ticker)
     combined=combine_float([a,b])
     flags=[]
     if "Depositary" in stock.get("name","") or "ADS" in stock.get("name",""):
@@ -102,7 +104,7 @@ def enrich_one(stock):
     except ValueError:pass
     combined["flags"]=flags
     return {"ticker":ticker,"name":stock.get("name"),"observed_at":datetime.now(timezone.utc).isoformat(),
-            "float":combined,"borrow":c,"fintel_url":"https://fintel.io/ss/us/"+ticker.lower()}
+            "float":combined,"borrow":c,"short_interest":si,"fintel_url":"https://fintel.io/ss/us/"+ticker.lower()}
 def load_cache():
     try:return json.loads(CACHE.read_text())
     except (OSError,ValueError):return {"symbols":{}}
@@ -141,7 +143,15 @@ def collection_targets(report,symbols,now=None):
 def main():
     report=json.loads(Path("public/data.json").read_text())
     cache=load_cache();symbols=cache.setdefault("symbols",{})
+    import asyncio
+    from .market_session import standalone
+    cache["market_calendar"]=asyncio.run(standalone())
     ordered,targets=collection_targets(report,symbols)
+    existing={s['ticker'] for s in targets}
+    targets += [s for t,s in ordered.items() if t not in existing and 'short_interest' not in symbols.get(t,{})]
+    from .short_reports import latest_finra
+    daily,volume_status=latest_finra(get)
+    cache['short_volume_source']=volume_status
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
         for result in pool.map(enrich_one,targets):
             ticker=result["ticker"]
@@ -151,9 +161,10 @@ def main():
             if known(obs.get("ctb")) and obs.get("as_of") and not any(x.get("as_of")==obs["as_of"] for x in history):
                 history.append({k:obs.get(k) for k in ("ctb","available","as_of","observed_at","source","lender")})
             result["borrow_history"]=history[-240:]
+            result['short_volume']=daily.get(ticker,{**volume_status,'status':'symbol_not_in_latest_file' if volume_status.get('status')=='ok' else 'source_unavailable'})
             if prior:
                 # Keep last observed numbers explicitly historical after a retrieval error.
-                for field,key in (("float","display_value"),("borrow","ctb")):
+                for field,key in (("float","display_value"),("borrow","ctb"),("short_interest","shares"),("short_volume","short_volume")):
                     if result.get(field,{}).get(key) is None and prior.get(field,{}).get(key) is not None and result.get(field,{}).get("status")!="conflict":
                         failed=result.get(field,{})
                         result[field]={**prior[field],"stale":True,"refresh_error":failed}
