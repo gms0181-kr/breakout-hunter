@@ -63,28 +63,42 @@ def session_state(calendar,now):
     return {'name':state,'source':calendar.get('source'),'checked_at':calendar.get('checked_at'),'date':date,'open':opening,'close':closing,'warning':'프리·애프터마켓 저유동성·스프레드 왜곡 주의' if state in ('프리마켓','애프터마켓') else None}
 
 def replay(archive,rows,now):
-    """Forward-only frozen observations. No current CTB is backfilled into history."""
-    snapshots=list(archive.get('observations',[]));known={(x['ticker'],x['price_at']) for x in snapshots}
+    """Forward-only: daily observations and actual detection-time signals separate."""
+    snapshots=list(archive.get('observations',[]));signals=list(archive.get('signals',[]))
+    known={(x['ticker'],x['price_at']) for x in snapshots};signal_days={(x['ticker'],x['observed_at'][:10]) for x in signals}
     for s,a in rows:
         m=a['market'];key=(s['ticker'],m.get('as_of'))
-        if not m.get('valid') or key in known:continue
-        snapshots.append({'ticker':s['ticker'],'observed_at':now.isoformat(),'price_at':m['as_of'],'price':m['price'],'candidate':a['candidate'],'stage':a['stage'],'score':a['observed_score'],'coverage':a['coverage'],'ctb_at':a['ctb'].get('as_of'),'ctb_known_at':a['ctb'].get('observed_at'),'si_known_at':a['official_interest'].get('observed_at'),'dilution_status':a['dilution']['status']})
-    snapshots=snapshots[-50000:];cases=[];positives=[];misses=[]
-    by={}
+        if not m.get('valid'):continue
+        if key not in known:
+            snapshots.append({'ticker':s['ticker'],'observed_at':now.isoformat(),'price_at':m['as_of'],'price':m['price'],'candidate':a['candidate'],'stage':a['stage'],'score':a['observed_score'],'coverage':a['coverage'],'ctb_at':a['ctb'].get('as_of'),'ctb_known_at':a['ctb'].get('observed_at'),'si_known_at':a['official_interest'].get('observed_at'),'dilution_status':a['dilution']['status']});known.add(key)
+        # First actual candidate each UTC date, even if the daily candle is unchanged.
+        sk=(s['ticker'],now.date().isoformat())
+        if a['candidate'] and sk not in signal_days:
+            intra=a.get('intraday',{});signals.append({'ticker':s['ticker'],'observed_at':now.isoformat(),'price':intra['price'] if intra.get('valid') else m['price'],'price_at':intra['as_of'] if intra.get('valid') else m['as_of'],'basis':'지연 IEX 5분봉' if intra.get('valid') else '완료 일봉 · 체결 가능 진입가 아님','stage':a['stage'],'score':a['observed_score'],'coverage':a['coverage'],'ctb_known_at':a['ctb'].get('observed_at'),'si_known_at':a['official_interest'].get('observed_at')});signal_days.add(sk)
+    snapshots=snapshots[-50000:];signals=signals[-10000:];by={};positives=[];misses=[]
     for x in snapshots:by.setdefault(x['ticker'],[]).append(x)
-    for ticker,records in by.items():
-        records.sort(key=lambda x:x['observed_at'])
-        for i,x in enumerate(records):
-            future=[y for y in records[i+1:] if instant(y['price_at'])>instant(x['observed_at']) and instant(y['observed_at'])-instant(x['observed_at'])<=timedelta(days=12)][:5]
+    for records in by.values():records.sort(key=lambda x:x['price_at'])
+    def future_for(x):return [y for y in by.get(x['ticker'],[]) if instant(y['price_at'])>instant(x['observed_at']) and instant(y['observed_at'])>instant(x['observed_at']) and instant(y['observed_at'])-instant(x['observed_at'])<=timedelta(days=12)][:5]
+    for x in signals:
+        future=future_for(x)
+        if len(future)<5:continue
+        gain=max((y['price']/x['price']-1)*100 for y in future)
+        positives.append({'ticker':x['ticker'],'first_observed_at':x['observed_at'],'baseline_basis':x['basis'],'max_close_gain_5_observations_pct':gain,'metric':'탐지 후 관측한 5개 완료 일봉 종가 중 +10% 도달; 장중 스파이크·실현수익 아님'})
+    for t,records in by.items():
+        for x in records:
+            future=future_for(x)
             if len(future)<5:continue
-            gain=max((y['price']/x['price']-1)*100 for y in future);item={'ticker':ticker,'first_observed_at':x['observed_at'],'max_close_gain_5_observations_pct':gain,'candidate':x['candidate'],'metric':'5개 후속 관측 일봉 종가 중 +10% 도달; 장중 고가·실현수익 아님'}
-            if x['candidate']:positives.append(item)
-            elif gain>=10:misses.append(item)
+            gains=[(y['price']/x['price']-1)*100 for y in future]
+            if max(gains)<10:continue
+            reached=future[next(i for i,v in enumerate(gains) if v>=10)]
+            if not any(z['ticker']==t and instant(x['observed_at'])<=instant(z['observed_at'])<instant(reached['price_at']) for z in signals):
+                misses.append({'ticker':t,'baseline_observed_at':x['observed_at'],'max_close_gain_5_observations_pct':max(gains),'reason':'상승 관측일 이전 저장된 탐지 신호 없음'})
+    cases=[]
     for t in ('SHFS','INLF','NCPL','SAIL','TNGX'):
-        r=by.get(t,[])
-        cases.append({'ticker':t,'status':'전향 관측 축적 중' if r else '검증 불가','first_observed_at':r[0]['observed_at'] if r else None,'pre_spike_detection':None,'ignition_at':next((x['observed_at'] for x in r if x['stage']=='IGNITION'),None),'reason':'급등 사건 날짜·당시 공개 CTB/잔량·SEC 계약 상태 스냅샷 미확보; 현재값으로 소급하지 않음'})
+        r=by.get(t,[]);detected=[x for x in signals if x['ticker']==t]
+        cases.append({'ticker':t,'status':'전향 관측 축적 중' if r else '검증 불가','first_observed_at':detected[0]['observed_at'] if detected else None,'pre_spike_detection':None,'ignition_at':next((x['observed_at'] for x in detected if x['stage']=='IGNITION'),None),'reason':'지정 급등 사건 날짜·당시 공개 CTB/잔량·SEC 계약 상태 스냅샷 미확보; 현재값으로 소급하지 않음'})
     false=[x for x in positives if x['max_close_gain_5_observations_pct']<10]
-    return {'observations':snapshots,'updated_at':now.isoformat()},{'status':'전향 검증 '+str(len(positives))+'건 성숙' if positives else '검증 불가 · 시점 일치 과거 스냅샷 부족; 전향 기록 시작','cases':cases,'evaluated_signals':len(positives),'false_positive_count':len(false) if positives else None,'false_positive_rate':100*len(false)/len(positives) if positives else None,'missed_count':len(misses) if positives or misses else None,'false_positives':false[-20:],'misses':misses[-20:],'note':'결제일을 공개일로 대체하지 않음. 최초 탐지는 실제 스캔 관측시각. 지연 일봉은 D-3 조기 탐지를 보장하지 않음.'}
+    return {'observations':snapshots,'signals':signals,'updated_at':now.isoformat()},{'status':'전향 검증 '+str(len(positives))+'건 성숙' if positives else '검증 불가 · 시점 일치 과거 스냅샷 부족; 전향 기록 시작','cases':cases,'evaluated_signals':len(positives),'false_positive_count':len(false) if positives else None,'false_positive_rate':100*len(false)/len(positives) if positives else None,'missed_count':len(misses) if positives or misses else None,'false_positives':false[-20:],'misses':misses[-20:],'note':'결제일을 공개일로 대체하지 않음. 탐지는 실제 스캔 관측시각, 후속 비교는 12일 내 5개 완료 일봉. 지연 기준가·중복 관측·미탐지 표본 선택 한계가 있어 실전 적중률이 아님.'}
 
 async def collect():
     now=datetime.now(timezone.utc);cache=read('squeeze-cache.json',{'symbols':{}});symbols=cache.setdefault('symbols',{});sec_cache=cache.setdefault('sec',{})

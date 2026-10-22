@@ -69,6 +69,11 @@ class IndependentHunterTests(unittest.TestCase):
         s,o=fixture();x=merge_observation(o,{'borrow':{'error':'HTTP403'}});self.assertTrue(x['borrow']['stale']);self.assertEqual(x['borrow']['ctb'],100)
     def test_session_holiday_unknown(self):
         self.assertEqual(session_state({},NOW)['name'],'검증 불가');self.assertEqual(session_state({'status':'ok','date':'2026-10-22','session':None},NOW)['name'],'휴장')
+    def test_new_candidate_same_daily_bar_is_archived(self):
+        s,o=fixture();a=analyze(s,o,NOW);a['candidate']=False;ar,_=replay({},[(s,a)],NOW);a['candidate']=True;ar,_=replay(ar,[(s,a)],NOW+timedelta(minutes=15));self.assertEqual(len(ar['observations']),1);self.assertEqual(len(ar['signals']),1);self.assertEqual(ar['signals'][0]['observed_at'],(NOW+timedelta(minutes=15)).isoformat())
+    def test_intraday_minor_break_not_major_breakout(self):
+        s,o=fixture();s['intraday']=[{'time':(NOW-timedelta(minutes=60-i*5)).isoformat(),'open':1.1,'high':1.12 if i<7 else 1.15,'low':1.09,'close':1.1 if i<7 else 1.14,'volume':1000,'vwap':1.1,'available_at':NOW.isoformat(),'complete':True} for i in range(8)]
+        self.assertTrue(analyze(s,o,NOW)['intraday']['valid']);self.assertFalse(analyze(s,o,NOW)['intraday']['breakout'])
     def test_intraday_future_is_not_confirmation(self):
         s,o=fixture();s['intraday']=[{**b,'time':(NOW+timedelta(hours=1)).isoformat()} for b in s['bars'][-8:]];self.assertFalse(analyze(s,o,NOW)['intraday']['valid'])
 if __name__=='__main__':unittest.main()

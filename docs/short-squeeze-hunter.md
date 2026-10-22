@@ -55,7 +55,7 @@ Recomputed statelessly every run, so jumps and downgrades are allowed:
 - DORMANT: one observed short-pressure signal.
 - FUEL BUILDING: at least two observed pressure signals.
 - SETUP: plus above VWAP, low defense and dollar-volume ratio >=1.3.
-- IGNITION: plus resistance breakout and ratio >=2.
+- IGNITION: plus previous20-day and recent intraday resistance breakout and ratio >=2.
 - EXPANSION: ignition conditions + close retention >=75%, five-day return
   >=15% and positive daily return.
 
@@ -81,7 +81,7 @@ price breakout + turnover, and newly discovered dilution disclosure flags.
 Dedup ID is ticker/type/source timestamp. No external message channel is
 assumed connected or used.
 
-Separate forward snapshots record actual scan-known timestamps. Replay
+Separate daily snapshots and first-per-day detection records preserve actual scan-known timestamps, including new signals on unchanged daily bars. Replay
 uses only subsequently observed daily closes: +10% within five subsequent
 observations defines an operational hit. This is neither intraday spike
 performance nor executable return. Unmatured cases do not contribute a

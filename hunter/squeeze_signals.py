@@ -80,8 +80,8 @@ def intraday_metrics(stock,now):
     bars=[x for x in bars if instant(x['time']).astimezone(ZoneInfo('America/New_York')).date()==today]
     if len(bars)<8:return {'valid':False,'reason':'현재 세션 표본 부족'}
     vols=sum(x['volume'] for x in bars);vwap=sum((x['vwap'] if finite(x.get('vwap')) and x['vwap']>0 else x['close'])*x['volume'] for x in bars)/vols if vols else None
-    base=bars[-7:-1];avg=mean(x['close']*x['volume'] for x in base);ratio=b['close']*b['volume']/avg if avg>0 else None
-    return {'valid':True,'as_of':b['time'],'price':b['close'],'vwap':vwap,'above_vwap':b['close']>=vwap if vwap else None,'breakout':b['close']>max(x['high'] for x in base),'dollar_ratio':ratio,'retention':(b['close']-b['low'])/(b['high']-b['low']) if b['high']>b['low'] else None,'low_defense':b['low']>=min(x['low'] for x in base)*.98,'scope':'IEX 5분봉 · 최소20분 지연 · VWAP는 당일 관측 범위'}
+    base=bars[-7:-1];daily=safe_bars(stock.get('bars'),now);major=max((x['high'] for x in daily[-20:]),default=None);avg=mean(x['close']*x['volume'] for x in base);ratio=b['close']*b['volume']/avg if avg>0 else None
+    return {'valid':True,'as_of':b['time'],'price':b['close'],'vwap':vwap,'above_vwap':b['close']>=vwap if vwap else None,'breakout':bool(major and b['close']>max(major,max(x['high'] for x in base))),'major_resistance':major,'dollar_ratio':ratio,'retention':(b['close']-b['low'])/(b['high']-b['low']) if b['high']>b['low'] else None,'low_defense':b['low']>=min(x['low'] for x in base)*.98,'scope':'IEX 5분봉 · 최소20분 지연 · VWAP는 당일 관측 범위'}
 
 def dilution(sec,now):
     # Reuse source-linked instrument facts, never an unverified safe/unsafe label.
