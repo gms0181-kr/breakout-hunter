@@ -4,7 +4,7 @@ const S=window.ShortPressure,E=escapeHtml,$id=id=>document.getElementById(id),n=
 let selected='',period='1M',query='',sort='score',items=[];
 const labels={ctb:'CTB 수준·상승',availability:'대차 잔량·감소',interest:'공식 잔고·변화',capital:'거래대금·가격',structure:'VWAP·돌파'};
 function price(v){if(!S.finite(v))return '가격 미확인';return n(v,'달러',4)+(report?.fx?.rate?' <small>(약 '+n(v*report.fx.rate,'원',0)+')</small>':'')}
-function date(v){return v?E(kst(v))+' KST':'기준시각 미공개'}
+function date(v){return v&&Number.isFinite(Date.parse(v))?E(new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(v)))+' KST':'기준시각 미공개'}
 function source(v,label){return v?.source?link(v.source,label):'<span class="sq-fine">출처 수집 대기</span>'}
 function stamp(v){return Date.parse(v||'')}
 function stockPrice(s){const c=s.halt_check;return c&&S.finite(c.trade_price)&&stamp(c.trade_at)<=Date.now()&&Date.now()-stamp(c.trade_at)<15*60000?{value:c.trade_price,at:c.trade_at,label:'최근 IEX 체결'}:{value:s.price,at:s.price_as_of,label:'최근 일봉'}}
