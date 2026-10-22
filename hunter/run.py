@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from .providers import collect
 from .core import rank
+from .scope import filter_report
 
 async def main():
     config=json.loads(Path("config.json").read_text())
@@ -48,6 +49,7 @@ async def main():
         report["last_top10_as_of"]=prior.get("ranking_updated_at") if prior.get("top10") else prior.get("last_top10_as_of")
     except (OSError,ValueError):
         report["last_top10"]=[]
+    filter_report(report)
     Path("public").mkdir(exist_ok=True)
     Path("public/data.json").write_text(json.dumps(report,ensure_ascii=False,allow_nan=False),encoding="utf-8")
     Path("public/hubc-backtest.json").write_text(json.dumps(report["backtest"],ensure_ascii=False,indent=2),encoding="utf-8")

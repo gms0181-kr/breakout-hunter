@@ -132,6 +132,8 @@ def classify(ticker,feed,trade,now):
 
 def eligible(stock,cap,now=None):
     now=instant(now or datetime.now(timezone.utc))
+    from .scope import in_scope
+    if not in_scope(stock,cap):return False
     value=stock.get("market_cap")
     evidence=stock.get("halt_check") or {}
     try:
@@ -164,7 +166,8 @@ def check_stocks(stocks,cap):
 def refresh_report():
     from .core import rank
     path=Path("public/data.json")
-    report=json.loads(path.read_text())
+    from .scope import filter_report
+    report=filter_report(json.loads(path.read_text()))
     stocks=list({s["ticker"]:s for group in ("watchlist","research_top10","top10","verification_candidates") for s in report.get(group,[])}.values())
     from .float_ctb import apply_cached
     apply_cached(stocks)
@@ -185,6 +188,7 @@ def refresh_report():
     report["top10_status"]="시총·정지 점검 후보; Float·숏·SEC 공급 검증 미완료; 토스 매수 가능 여부 사용자 확인"
     report["coverage"]["halt_filter_status"]="공식 RSS + 최근 IEX 체결 대조; 상태별 유효시간 적용"
     report["limitations"]=[x for x in report.get("limitations",[]) if "halt filters pending" not in x]
+    filter_report(report)
     path.write_text(json.dumps(report,ensure_ascii=False,allow_nan=False))
     print(json.dumps({"top10_count":len(top),"tickers":[s["ticker"] for s in top],"ranking_scope":report["ranking_scope"]}))
 

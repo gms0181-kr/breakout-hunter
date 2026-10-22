@@ -9,6 +9,7 @@ import re
 import aiohttp
 from datetime import datetime, timedelta, timezone
 from .core import scan_order
+from .scope import security_reason,scope_reason,MAX_CAP
 
 NASDAQ_ROOT="https://www.nasdaqtrader.com/dynamic/SymDir/"
 EXCLUDED=re.compile(r"\b(warrants?|rights?|preferred|debentures?|notes?|units?|exchange.traded|ETN|ETF|acquisition corp)\b",re.I)
@@ -39,9 +40,9 @@ async def universe(session):
             symbol=row.get("Symbol") if i==0 else row.get("ACT Symbol")
             name=row.get("Security Name","")
             exchange="NASDAQ" if i==0 else {"N":"NYSE","A":"NYSE American"}.get(row.get("Exchange"))
-            if not symbol or not exchange or row.get("ETF")!="N" or row.get("Test Issue")!="N" or EXCLUDED.search(name): continue
+            if not symbol or not exchange or row.get("ETF")!="N" or row.get("Test Issue")!="N" or security_reason({"name":name}): continue
             if not re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,9}",symbol): continue
-            stocks[symbol]={"ticker":symbol,"name":name,"exchange":exchange,"universe_source":NASDAQ_ROOT+("nasdaqlisted.txt" if i==0 else "otherlisted.txt"),"security_type_status":"name/ETF filter; manual exceptions pending","halt_status":"unverified"}
+            stocks[symbol]={"ticker":symbol,"name":name,"exchange":exchange,"universe_source":NASDAQ_ROOT+("nasdaqlisted.txt" if i==0 else "otherlisted.txt"),"security_type_status":"Nasdaq listing name/ETF product exclusion; common shares/ADS","halt_status":"unverified"}
     return stocks,errors
 
 async def bars(session,symbols):
@@ -102,13 +103,24 @@ async def screener_metadata(session):
         def number(v):
             try: return float(re.sub(r"[^0-9.\\-]","",str(v)))
             except (ValueError,TypeError): return None
-        return {r["symbol"]:{"market_cap":number(r.get("marketCap")),"market_cap_source":url,"market_cap_as_of":datetime.now(timezone.utc).isoformat()} for r in rows if r.get("symbol")},[]
+        return {r["symbol"]:{"market_cap":number(r.get("marketCap")),"industry":r.get("industry"),"sector":r.get("sector"),"market_cap_source":url,"market_cap_as_of":datetime.now(timezone.utc).isoformat()} for r in rows if r.get("symbol")},[]
     except (RuntimeError,AttributeError):
         return {},[{"provider":"Nasdaq screener","error":"시총 메타데이터 접근 실패; 미확인 유지"}]
 
 async def collect(config):
     async with aiohttp.ClientSession() as session:
         stocks,failures=await universe(session)
+        metadata,metadata_errors=await screener_metadata(session)
+        failures+=metadata_errors
+        source_count=len(stocks)
+        excluded={}
+        selected={}
+        for symbol,stock in stocks.items():
+            stock.update(metadata.get(symbol,{}))
+            reason=scope_reason(stock,config.get("market_cap_max",MAX_CAP))
+            if reason:excluded[reason]=excluded.get(reason,0)+1
+            else:selected[symbol]=stock
+        stocks=selected
         symbols=scan_order(stocks,datetime.now(timezone.utc).strftime("%Y-%m-%d"))
         histories,errors=await bars(session,symbols)
         failures+=errors
@@ -118,8 +130,6 @@ async def collect(config):
             failures+=retry_errors
             histories.update({symbol:items for symbol,items in retried.items() if items})
             failures += [{"provider":"Alpaca","ticker":symbol,"error":"no_bars_after_retry"} for symbol in missing if not histories.get(symbol)]
-        metadata,metadata_errors=await screener_metadata(session)
-        failures+=metadata_errors
         ciks,errors=await sec_index(session)
         failures+=errors
         # Full universe is attempted. SEC secondary coverage is separately counted.
@@ -161,5 +171,5 @@ async def collect(config):
             config["_fx"]={"rate":fx["rates"]["KRW"],"as_of":fx["date"],"source":"https://www.frankfurter.app/","type":"daily reference, not live"}
         except (RuntimeError,KeyError): config["_fx"]=None
         config["_backtest"]=replay_result
-        return list(stocks.values()),{"universe":len(stocks),"attempted":len(symbols) if os.getenv("ALPACA_API_KEY") and os.getenv("ALPACA_API_SECRET") else 0,"processed":sum(bool(s["bars"]) for s in stocks.values()),"universe_complete":not any("source" in e for e in failures),"sec_processed":sec_count,"failures":failures,"market_cap_filter_status":"Nasdaq 시총 수집 "+str(len(metadata))+"개; 미확인 별도 보류","halt_filter_status":"거래정지 데이터 연결 필요"}
+        return list(stocks.values()),{"universe":len(stocks),"listing_companies_before_cap_filter":source_count,"scope_exclusions":excluded,"attempted":len(symbols) if os.getenv("ALPACA_API_KEY") and os.getenv("ALPACA_API_SECRET") else 0,"processed":sum(bool(s["bars"]) for s in stocks.values()),"universe_complete":not any("source" in e for e in failures),"sec_processed":sec_count,"failures":failures,"market_cap_filter_status":"Nasdaq 시총 수집 "+str(len(metadata))+"개; 미확인 별도 보류","halt_filter_status":"거래정지 데이터 연결 필요"}
 
