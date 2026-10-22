@@ -187,7 +187,7 @@ async def collect():
     detail_tickers={s['ticker'] for s in short_watch}|{s['ticker'] for s,a in ordered[:30]}
     details={s['ticker']:{'stock':{**s,'bars':s['bars'][-260:],'intraday':s['intraday'][-300:]},'observation':symbols.get(s['ticker'],{}),'analysis':a} for s,a in rows if s['ticker'] in detail_tickers}
     def summary(pair):
-        s,a=pair;return {'ticker':s['ticker'],'name':s['name'],'exchange':s['exchange'],'price':s['price'],'change_pct':s['change_pct'],'market_cap':s.get('market_cap'),'float':symbols.get(s['ticker'],{}).get('float',{}),'outstanding_fact':s.get('outstanding_fact'),'halt_status':s['halt_status'],'analysis':a}
+        s,a=pair;return {'ticker':s['ticker'],'name':s['name'],'exchange':s['exchange'],'price':s['price'],'price_as_of':s.get('price_as_of'),'change_pct':s['change_pct'],'market_cap':s.get('market_cap'),'float':symbols.get(s['ticker'],{}).get('float',{}),'outstanding_fact':s.get('outstanding_fact'),'halt_status':s['halt_status'],'analysis':a}
     series={}
     for s,a in rows:
         series.setdefault(s['ticker'][0],{})[s['ticker']]=[[b.get(k) for k in ('time','open','high','low','close','volume','vwap')] for b in safe_bars(s['bars'],finished)[-260:]]
