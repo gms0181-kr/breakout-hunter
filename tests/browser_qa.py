@@ -77,7 +77,7 @@ async def main():
                 assert await page.locator("#detail").is_visible()
                 await page.locator("#close").click()
             await page.locator('a[href="#short-squeeze"]').click()
-            assert await page.locator('body').evaluate("el=>el.classList.contains('sq-mode')")
+            await page.wait_for_function("document.body.classList.contains('sq-mode')",timeout=15000)
             squeeze_count=await page.locator('[data-sq-select]').count()
             if squeeze_count:
                 buttons_sq=page.locator('[data-sq-select]')
@@ -96,7 +96,7 @@ async def main():
             await page.screenshot(path=f"qa/squeeze-{name}.png",full_page=False,timeout=20000)
             assert not await page.evaluate("document.documentElement.scrollWidth > innerWidth"),'terminal horizontal overflow'
             await page.locator('a[href="#scan"]').click()
-            assert not await page.locator('body').evaluate("el=>el.classList.contains('sq-mode')")
+            await page.wait_for_function("!document.body.classList.contains('sq-mode')",timeout=15000)
             if width<768 and await page.locator("#rows [data-ticker]").count():
                 assert await page.locator("#rows tr").first.evaluate("el=>getComputedStyle(el).display")=="grid"
                 assert await page.locator("#rows tr").first.locator("td").nth(5).get_attribute("data-label")=="Float"
