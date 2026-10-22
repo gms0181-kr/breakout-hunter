@@ -115,7 +115,8 @@ def analyze(stock,obs,now=None):
             add('short_pressure',5 if drop>=80 else 3 if drop>=50 else 1 if drop>0 else 0,5,'직전 관측 잔량 감소 '+str(drop)+'%')
             if drop>0:signals.append('borrow_falling')
     # Settlement dates are not public release timestamps. Only observation at/before now.
-    si_valid=not si.get('stale') and si.get('official_origin')=='FINRA' and 'chartexchange.com/' in si.get('source','') and age_ok(si.get('observed_at'),now,45) and age_ok(si.get('settlement_date','')+'T00:00:00+00:00',now,45) and finite(si.get('float_pct')) and 0<=si['float_pct']<=100 and not obs.get('float',{}).get('flags')
+    split_between=any(instant(str(e.get('ex_date',''))[:10]+'T00:00:00+00:00') and str(e.get('ex_date',''))[:10]>str(si.get('settlement_date','9999')) and instant(str(e['ex_date'])[:10]+'T00:00:00+00:00')<=now for e in stock.get('split_check',{}).get('events',[]))
+    si_valid=not split_between and not si.get('stale') and si.get('official_origin')=='FINRA' and 'chartexchange.com/' in si.get('source','') and age_ok(si.get('observed_at'),now,45) and age_ok(si.get('settlement_date','')+'T00:00:00+00:00',now,45) and finite(si.get('float_pct')) and 0<=si['float_pct']<=100 and not obs.get('float',{}).get('flags')
     if si_valid:
         ratio=si['float_pct'];change=si.get('change_pct')
         add('short_pressure',6 if ratio>=20 else 4 if ratio>=10 else 2 if ratio>=5 else 0,6,'공식 잔고/당시 Float '+str(ratio)+'%')

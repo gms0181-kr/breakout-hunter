@@ -10,7 +10,7 @@ from collections import Counter
 import aiohttp
 from . import providers
 from .scope import scope_reason
-from .squeeze_signals import analyze,instant,finite,update_history
+from .squeeze_signals import analyze,instant,finite,update_history,safe_bars
 ROOT=Path('public')
 def read(name,default):
     try:return json.loads((ROOT/name).read_text())
@@ -59,7 +59,7 @@ def session_state(calendar,now):
     day=calendar.get('session')
     if not day:return {'name':'휴장','source':calendar.get('source')}
     clock=local.strftime('%H:%M');opening=day['open'];closing=day['close']
-    state='프리마켓' if day.get('session_open','04:00')<=clock<opening else '정규장' if opening<=clock<closing else '애프터마켓' if closing<=clock<day.get('session_close','20:00') else '장외 시간'
+    state='프리마켓' if day.get('session_open','04:00').replace(':','')<=clock.replace(':','')<opening else '정규장' if opening<=clock<closing else '애프터마켓' if closing<=clock.replace(':','')<day.get('session_close','20:00').replace(':','') else '장외 시간'
     return {'name':state,'source':calendar.get('source'),'checked_at':calendar.get('checked_at'),'date':date,'open':opening,'close':closing,'warning':'프리·애프터마켓 저유동성·스프레드 왜곡 주의' if state in ('프리마켓','애프터마켓') else None}
 
 def replay(archive,rows,now):
@@ -99,7 +99,7 @@ async def collect():
         coverage['listed']=len(all_stocks);coverage['listing_complete']=not listing_errors;coverage['metadata']=len(metadata)
         stocks={};excluded=Counter()
         for t,s in all_stocks.items():
-            s.update(metadata.get(t,{}));reason=scope_reason(s,include_trading=False)
+            s.update(metadata.get(t,{}));reason='warrant_depositary_security' if 'ADW' in s.get('name','') else scope_reason(s,include_trading=False)
             if reason:excluded[reason]+=1
             else:stocks[t]=s
         histories,errors=await providers.bars(session,sorted(stocks));failures+=errors;coverage['daily_attempted']=len(stocks);coverage['daily_received']=len(histories)
@@ -173,7 +173,11 @@ async def collect():
     detail_tickers={s['ticker'] for s in short_watch}|{s['ticker'] for s,a in ordered[:30]}
     details={s['ticker']:{'stock':{**s,'bars':s['bars'][-260:],'intraday':s['intraday'][-300:]},'observation':symbols.get(s['ticker'],{}),'analysis':a} for s,a in rows if s['ticker'] in detail_tickers}
     def summary(pair):
-        s,a=pair;return {'ticker':s['ticker'],'name':s['name'],'exchange':s['exchange'],'price':s['price'],'change_pct':s['change_pct'],'market_cap':s.get('market_cap'),'halt_status':s['halt_status'],'analysis':a}
+        s,a=pair;return {'ticker':s['ticker'],'name':s['name'],'exchange':s['exchange'],'price':s['price'],'change_pct':s['change_pct'],'market_cap':s.get('market_cap'),'float':symbols.get(s['ticker'],{}).get('float',{}),'outstanding_fact':s.get('outstanding_fact'),'halt_status':s['halt_status'],'analysis':a}
+    series={}
+    for s,a in rows:
+        series.setdefault(s['ticker'][0],{})[s['ticker']]=[[b.get(k) for k in ('time','open','high','low','close','volume','vwap')] for b in safe_bars(s['bars'],finished)[-260:]]
+    for letter,values in series.items():(ROOT/('squeeze-series-'+letter+'.json')).write_text(json.dumps(values,separators=(',',':'),allow_nan=False))
     result={'engine':'SHORT SQUEEZE HUNTER 1.0','started_at':now.isoformat(),'updated_at':finished.isoformat(),'status':'partial' if failures or coverage['unobserved_borrow'] else 'collected','source_scope':'NASDAQ/NYSE/NYSE American 전체 상장 목록에서 독립 시작; 기존 후보·점수·순위 미사용','session':session_state(calendar,finished),'market_calendar':calendar,'coverage':coverage,'failures':failures[:100],'top10':[summary(x) for x in actionable],'research_top10':[summary(x) for x in research],'high_risk':[summary(x) for x in risk[:30]],'observations':[summary(x) for x in ordered],'details':details,'fx':fx,'fintel':fintel,'backtest':backtest,'schedule':{'cron':'7,22,37,52 * * * 1-5','nominal_minutes':15,'note':'UTC 평일 · 시장 세션 포함; GitHub Actions 대기·실행 시간으로 지연 가능. 대차 160종목/회 순환; 전체 시세 매 실행 재평가','market_feed':'IEX 부분 거래소 일봉 + 숏 근거 종목 최대100개 5분봉','intraday_delay_minutes_minimum':20},'limits':['실시간·전체 시장 체결 데이터 아님','Fintel 숫자 교차검증 미완료','SEC 원문·계약 조건이 미확정이면 희석 점수 미부여','토스 실제 주문 가능 여부 미확인 종목은 실전 TOP10 제외','D-3~D-1 예측 적중률·거짓양성률 검증 자료 축적 전','공매도 실제 진입가·강제청산·청산완료 비율 추정 금지']}
     for name,value in (('squeeze-hunter.json',result),('squeeze-cache.json',{**cache,'updated_at':finished.isoformat(),'symbols':symbols,'sec':sec_cache}),('squeeze-state.json',state),('squeeze-snapshots.json',archive)):(ROOT/name).write_text(json.dumps(value,ensure_ascii=False,allow_nan=False))
     print(json.dumps({'coverage':coverage,'research_top10':[s['ticker'] for s,a in research],'actionable_top10':len(actionable),'fintel':fintel,'stages':dict(Counter(a['stage'] or '미확정' for s,a in rows))},ensure_ascii=False))
