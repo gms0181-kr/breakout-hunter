@@ -98,7 +98,7 @@ async def main():
             assert not await page.evaluate("document.documentElement.scrollWidth > innerWidth"),'terminal horizontal overflow'
             await page.locator('a[href="#scan"]').click()
             await page.wait_for_function("!document.body.classList.contains('sq-mode')",timeout=15000)
-            await page.locator('a[href="#squeeze-hunter"]').click()
+            await page.locator('a[href="#squeeze-hunter"]').first.click()
             await page.wait_for_function("document.body.classList.contains('sh-mode')",timeout=15000)
             await page.wait_for_function("!document.getElementById('sh-refresh').disabled",timeout=60000)
             assert await page.locator('#squeeze-hunter').is_visible()
