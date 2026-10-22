@@ -109,7 +109,8 @@ def engine_scores(stock):
             "candidate":bool(signals)}
 
 def rank(stocks):
-    scored=[{**s,**engine_scores(s)} for s in stocks]
+    from .verification import verify
+    scored=[{**s,**engine_scores(s),"verification":verify(s)} for s in stocks]
     # Broker orderability is checked by the user and does not gate ranking.
     qualified=[s for s in scored if s["candidate"] and s["score"] is not None]
     return sorted(qualified,key=lambda s:(-s["score"],s["ticker"]))[:10],scored
@@ -130,3 +131,4 @@ def deduplicate_supply(events, as_of):
 
 def point_in_time(records, as_of):
     return [r for r in records if r.get("known_at") and r["known_at"]<=as_of and r.get("time",r["known_at"])<=as_of]
+

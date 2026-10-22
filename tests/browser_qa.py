@@ -57,7 +57,15 @@ async def main():
                 expected_ctb=await page.evaluate("storedTop10().filter(s=>sourceObservation(s)?.borrow?.ctb!=null).length")
                 assert float_cells==expected_float
                 assert ctb_cells==expected_ctb
+            await page.locator("#triple").click()
+            assert "3중 검증 후보" in await page.locator("#tabletitle").inner_text()
+            expected=await page.evaluate("(report.verification_candidates||[]).filter(s=>s.market_cap==null||s.market_cap<=Number(document.getElementById('cap').value)).length")
+            assert await page.locator("#rows [data-ticker]").count()==expected
             await page.locator("#research").click()
+            if await page.evaluate("!!report.verification_summary"):
+                assert await page.locator("#rows .verification-badge").count()==await page.locator("#rows [data-ticker]").count()
+            await page.locator("#inlf-validation summary").click()
+            assert await page.locator("#inlf-case").is_visible()
             await page.screenshot(path=f"qa/{name}.png",full_page=True)
             buttons=page.locator("[data-ticker]")
             if await buttons.count():
@@ -76,3 +84,4 @@ async def main():
     Path("qa/result.json").write_text(json.dumps(evidence,indent=2))
     print(json.dumps(evidence))
 asyncio.run(main())
+

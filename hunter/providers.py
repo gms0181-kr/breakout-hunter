@@ -60,7 +60,7 @@ async def bars(session,symbols):
             while True:
                 data=await fetch(session,"https://data.alpaca.markets/v2/stocks/bars",headers=headers,params=params)
                 for ticker,items in data.get("bars",{}).items():
-                    output.setdefault(ticker,[]).extend({"time":b["t"],"open":b["o"],"high":b["h"],"low":b["l"],"close":b["c"],"volume":b["v"]} for b in items)
+                    output.setdefault(ticker,[]).extend({"time":b["t"],"open":b["o"],"high":b["h"],"low":b["l"],"close":b["c"],"volume":b["v"],"vwap":b.get("vw"),"available_at":today.isoformat(),"complete":datetime.fromisoformat(b["t"].replace("Z","+00:00"))+timedelta(days=1)<=today-timedelta(minutes=20),"source_adjustment":"split; latest provider basis, historical replay not certified"} for b in items)
                 token=data.get("next_page_token")
                 if not token: break
                 params["page_token"]=token
@@ -133,11 +133,15 @@ async def collect(config):
             stock.update(metadata.get(symbol,{}))
         # Independent signals select SEC enrichment, not alphabetical order.
         from .core import engine_scores
+        from .verification import verify
         from .sec import analyze,outstanding_fact
         # Transparent SEC budget; never presented as full SEC scan.
-        priority=sorted((s for s in stocks.values() if s["bars"]),key=lambda s:engine_scores(s)["score"] or 0,reverse=True)
+        priority=sorted((s for s in stocks.values() if s["bars"]),key=lambda s:((verify(s)["market"]["confirmed_capital"] and verify(s)["market"]["confirmed_structure"]),engine_scores(s)["score"] or 0),reverse=True)
         sec_count=0
-        for stock in priority[:config.get("sec_budget",20)]:
+        selected=priority[:config.get("sec_budget",20)]
+        # INLF is a disclosed validation case, not a ranking bonus.
+        if "INLF" in stocks and stocks["INLF"] not in selected:selected.append(stocks["INLF"])
+        for stock in selected:
             cik=ciks.get(stock["ticker"])
             if cik:
                 stock["sec"]=await sec_timeline(session,cik)
@@ -150,9 +154,12 @@ async def collect(config):
                 await asyncio.sleep(.3)
         from .backtest import replay
         replay_result=await replay(session)
+        from .inlf_case import replay_inlf
+        config["_inlf_case"]=await replay_inlf(session,ciks.get("INLF"))
         try:
             fx=await fetch(session,"https://api.frankfurter.app/latest",params={"from":"USD","to":"KRW"})
             config["_fx"]={"rate":fx["rates"]["KRW"],"as_of":fx["date"],"source":"https://www.frankfurter.app/","type":"daily reference, not live"}
         except (RuntimeError,KeyError): config["_fx"]=None
         config["_backtest"]=replay_result
         return list(stocks.values()),{"universe":len(stocks),"attempted":len(symbols) if os.getenv("ALPACA_API_KEY") and os.getenv("ALPACA_API_SECRET") else 0,"processed":sum(bool(s["bars"]) for s in stocks.values()),"universe_complete":not any("source" in e for e in failures),"sec_processed":sec_count,"failures":failures,"market_cap_filter_status":"Nasdaq 시총 수집 "+str(len(metadata))+"개; 미확인 별도 보류","halt_filter_status":"거래정지 데이터 연결 필요"}
+

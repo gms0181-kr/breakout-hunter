@@ -144,7 +144,8 @@ def eligible(stock,cap,now=None):
 
 def check_stocks(stocks,cap):
     feed=snapshot()
-    candidate_symbols=[s["ticker"] for s in stocks if known(s.get("market_cap")) and 0<s["market_cap"]<=cap and engine_scores(s)["candidate"]]
+    from .verification import verify
+    candidate_symbols=[s["ticker"] for s in stocks if known(s.get("market_cap")) and 0<s["market_cap"]<=cap and (engine_scores(s)["candidate"] or verify(s)["candidate"])]
     trades,errors=recent_trades(candidate_symbols) if feed["status"]=="ok" else ({},["halt_feed_unavailable"])
     now=datetime.now(timezone.utc)
     for stock in stocks:
@@ -164,13 +165,15 @@ def refresh_report():
     from .core import rank
     path=Path("public/data.json")
     report=json.loads(path.read_text())
-    stocks=list({s["ticker"]:s for group in ("watchlist","research_top10","top10") for s in report.get(group,[])}.values())
+    stocks=list({s["ticker"]:s for group in ("watchlist","research_top10","top10","verification_candidates") for s in report.get(group,[])}.values())
     from .float_ctb import apply_cached
     apply_cached(stocks)
     feed=check_stocks(stocks,report.get("config",{}).get("market_cap_max",2000000000))
     top,_=rank([s for s in stocks if s["eligibility"]=="eligible"])
+    from .verification import verify
+    for stock in stocks:stock["verification"]=verify(stock)
     checked={s["ticker"]:s for s in stocks}
-    for group in ("watchlist","research_top10"):
+    for group in ("watchlist","research_top10","verification_candidates"):
         report[group]=[checked[s["ticker"]] for s in report.get(group,[])]
     if report.get("top10"):
         report["last_top10"]=report["top10"]
@@ -186,3 +189,4 @@ def refresh_report():
     print(json.dumps({"top10_count":len(top),"tickers":[s["ticker"] for s in top],"ranking_scope":report["ranking_scope"]}))
 
 if __name__=="__main__": refresh_report()
+

@@ -124,7 +124,7 @@ def main():
     report=json.loads(Path("public/data.json").read_text())
     cache=load_cache();symbols=cache.setdefault("symbols",{})
     ordered={}
-    for group in ("top10","research_top10","last_top10","watchlist"):
+    for group in ("top10","research_top10","last_top10","watchlist","verification_candidates"):
         for stock in report.get(group,[]):ordered.setdefault(stock["ticker"],stock)
     def due(ticker):
         # Retry source paths corrected after an observed 404; keep successful cache entries.
@@ -136,6 +136,11 @@ def main():
         for result in pool.map(enrich_one,targets):
             ticker=result["ticker"]
             prior=symbols.get(ticker)
+            history=list((prior or {}).get("borrow_history",[]))
+            obs=result.get("borrow",{})
+            if known(obs.get("ctb")) and obs.get("as_of") and not any(x.get("as_of")==obs["as_of"] for x in history):
+                history.append({k:obs.get(k) for k in ("ctb","available","as_of","observed_at","source","lender")})
+            result["borrow_history"]=history[-240:]
             if prior:
                 # Keep last observed numbers explicitly historical after a retrieval error.
                 for field,key in (("float","display_value"),("borrow","ctb")):
@@ -159,3 +164,4 @@ def main():
         "ctb_values":sum(s.get("borrow",{}).get("ctb") is not None for s in symbols.values()),
         "fintel":cache["fintel_access"]},ensure_ascii=False))
 if __name__=="__main__":main()
+
