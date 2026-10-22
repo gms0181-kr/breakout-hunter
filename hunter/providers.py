@@ -117,7 +117,7 @@ async def collect(config):
         selected={}
         for symbol,stock in stocks.items():
             stock.update(metadata.get(symbol,{}))
-            reason=scope_reason(stock,config.get("market_cap_max",MAX_CAP))
+            reason=scope_reason(stock,config.get("market_cap_max",MAX_CAP),include_trading=False)
             if reason:excluded[reason]=excluded.get(reason,0)+1
             else:selected[symbol]=stock
         stocks=selected
@@ -141,12 +141,16 @@ async def collect(config):
             stock["change_pct"]=(stock["price"]/stock["bars"][-2]["close"]-1)*100 if len(stock["bars"])>1 else None
             stock.update({"float":None,"outstanding":None,"market_cap":None,"toss_orderable":config.get("toss_orderable",{}).get(symbol),"short":{"status":"연결 필요: ChartExchange/Fintel 라이선스 데이터"},"sec":{"status":"원문 분석 대기","reviewed":False},"price_source":"https://docs.alpaca.markets/docs/historical-stock-data-1","feed":"IEX 부분 거래소 일봉; 통합 거래량 아님","chartexchange":"https://chartexchange.com/symbol/"+symbol.lower()+"/"})
             stock.update(metadata.get(symbol,{}))
+        from .splits import snapshot as split_snapshot,apply as apply_splits
+        split_feed=await split_snapshot(session,fetch)
+        apply_splits(stocks.values(),split_feed)
+        config['_split_feed']={k:v for k,v in split_feed.items() if k!='events'}
         # Independent signals select SEC enrichment, not alphabetical order.
         from .core import engine_scores
         from .verification import verify
         from .sec import analyze,outstanding_fact
         # Transparent SEC budget; never presented as full SEC scan.
-        priority=sorted((s for s in stocks.values() if s["bars"]),key=lambda s:((verify(s)["market"]["confirmed_capital"] and verify(s)["market"]["confirmed_structure"]),engine_scores(s)["score"] or 0),reverse=True)
+        priority=sorted((s for s in stocks.values() if s["bars"] and scope_reason(s,config.get("market_cap_max",MAX_CAP)) is None),key=lambda s:((verify(s)["market"]["confirmed_capital"] and verify(s)["market"]["confirmed_structure"]),engine_scores(s)["score"] or 0),reverse=True)
         sec_count=0
         selected=priority[:config.get("sec_budget",20)]
         # INLF is a disclosed validation case, not a ranking bonus.

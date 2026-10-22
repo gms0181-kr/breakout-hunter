@@ -46,10 +46,11 @@ class HaltTests(unittest.TestCase):
         self.assertEqual(f["events"][0]["halted_at"],"2026-10-20T18:00:00.123000+00:00")
     def test_cap_and_halt_evidence_gate_without_toss(self):
         check=classify("TEST",feed(),trade(),NOW)
-        s={"market_cap":1000000,"halt_status":check["status"],"halt_check":check,"toss_orderable":None}
+        s={"price":1,"market_cap":1000000,"halt_status":check["status"],"halt_check":check,"toss_orderable":None}
         self.assertTrue(eligible(s,2000000000,NOW))
         for cap in (None,0,-1,3000000000):
             self.assertFalse(eligible({**s,"market_cap":cap},2000000000,NOW))
         self.assertFalse(eligible({**s,"halt_status":"halted"},2000000000,NOW))
         self.assertFalse(eligible(s,2000000000,NOW+timedelta(minutes=11)))
 if __name__=="__main__":unittest.main()
+
