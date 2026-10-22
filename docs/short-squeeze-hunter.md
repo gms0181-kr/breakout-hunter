@@ -39,7 +39,7 @@ All weights below are explicit in `hunter/squeeze_signals.py`. Missing is
 | Short pressure |30|CTB levels 20/50/100/200/400 each +1 (5); 24h rise >=20pp=5, >=5pp=3, >0=1 (5); last 3 observations strictly rising=2; availability 0=3, <=10,000=2, <=100,000=1 (3); decrease >=80%=5, >=50%=3, >0=1 (5); official SI/Float >=20%=6, >=10%=4, >=5%=2 (6); SI report growth >=20%=4, >0=2 (4)|
 | Capital inflow context |25|20-day dollar-volume ratio >=2=10, >=1.3=5 only with nonnegative price reaction, low defense and close in upper half; RVOL >=2=5, >=1.2=2 under same hold conditions; close >= daily VWAP with nonnegative return=5; rising OBV with low defense=5|
 | Price structure |20|RSI14 simple-average <=35 + rebound + low defense=5, or higher low + defense=2; prior close below prior VWAP then reclaim=5, or above=2; close above previous20 high=5, within5% below=2; five-day range and volume compression plus support=5|
-| Dilution gap |20|Only source-backed, timed, reviewed contract assessment may score: confirmed gap20 / low immediate risk12 / high immediate risk0; otherwise missing. Lexical absence never means safe.|
+| Dilution gap |20|Only source-linked reviewed instrument facts with effective/valid timestamps and verified share basis may score: confirmed complete gap20 / high immediate risk0; otherwise missing. Lexical absence never means safe.|
 | Catalyst |5|SEC original filing accepted within72h=1; direction unverified. Current adapter does not manufacture FDA/clinical/earnings dates.|
 
 RSI is simple-average RSI14, OBV uses daily direction. Dollar-volume is
