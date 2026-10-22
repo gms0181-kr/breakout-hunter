@@ -66,11 +66,11 @@ def replay(archive,rows,now):
         m=a['market'];key=(s['ticker'],m.get('as_of'))
         if not m.get('valid'):continue
         if key not in known:
-            snapshots.append({'ticker':s['ticker'],'observed_at':now.isoformat(),'price_at':m['as_of'],'price':m['price'],'candidate':a['candidate'],'stage':a['stage'],'score':a['observed_score'],'coverage':a['coverage'],'ctb_at':a['ctb'].get('as_of'),'ctb_known_at':a['ctb'].get('observed_at'),'si_known_at':a['official_interest'].get('observed_at'),'dilution_status':a['dilution']['status']});known.add(key)
+            snapshots.append({'ticker':s['ticker'],'observed_at':now.isoformat(),'price_at':m['as_of'],'price':m['price'],'candidate':a['candidate'],'candidate_type':a.get('candidate_type','legacy_unknown'),'stage':a['stage'],'score':a['observed_score'],'coverage':a['coverage'],'ctb_at':a['ctb'].get('as_of'),'ctb_known_at':a['ctb'].get('observed_at'),'si_known_at':a['official_interest'].get('observed_at'),'dilution_status':a['dilution']['status']});known.add(key)
         # First actual candidate each UTC date, even if the daily candle is unchanged.
         sk=(s['ticker'],now.date().isoformat())
         if a['candidate'] and sk not in signal_days:
-            intra=a.get('intraday',{});signals.append({'ticker':s['ticker'],'observed_at':now.isoformat(),'price':intra['price'] if intra.get('valid') else m['price'],'price_at':intra['as_of'] if intra.get('valid') else m['as_of'],'basis':'지연 IEX 5분봉' if intra.get('valid') else '완료 일봉 · 체결 가능 진입가 아님','stage':a['stage'],'score':a['observed_score'],'coverage':a['coverage'],'ctb_known_at':a['ctb'].get('observed_at'),'si_known_at':a['official_interest'].get('observed_at')});signal_days.add(sk)
+            intra=a.get('intraday',{});signals.append({'ticker':s['ticker'],'observed_at':now.isoformat(),'price':intra['price'] if intra.get('valid') else m['price'],'price_at':intra['as_of'] if intra.get('valid') else m['as_of'],'basis':'지연 IEX 5분봉' if intra.get('valid') else '완료 일봉 · 체결 가능 진입가 아님','candidate_type':a.get('candidate_type','legacy_unknown'),'stage':a['stage'],'score':a['observed_score'],'coverage':a['coverage'],'ctb_known_at':a['ctb'].get('observed_at'),'si_known_at':a['official_interest'].get('observed_at')});signal_days.add(sk)
     snapshots=snapshots[-50000:];signals=signals[-10000:];by={};positives=[];misses=[]
     for x in snapshots:by.setdefault(x['ticker'],[]).append(x)
     for records in by.values():records.sort(key=lambda x:x['price_at'])
@@ -79,7 +79,7 @@ def replay(archive,rows,now):
         future=future_for(x)
         if len(future)<5:continue
         gain=max((y['price']/x['price']-1)*100 for y in future)
-        positives.append({'ticker':x['ticker'],'first_observed_at':x['observed_at'],'baseline_basis':x['basis'],'max_close_gain_5_observations_pct':gain,'metric':'탐지 후 관측한 5개 완료 일봉 종가 중 +10% 도달; 장중 스파이크·실현수익 아님'})
+        positives.append({'ticker':x['ticker'],'first_observed_at':x['observed_at'],'candidate_type':x.get('candidate_type','legacy_unknown'),'baseline_basis':x['basis'],'max_close_gain_5_observations_pct':gain,'metric':'탐지 후 관측한 5개 완료 일봉 종가 중 +10% 도달; 장중 스파이크·실현수익 아님'})
     for t,records in by.items():
         for x in records:
             future=future_for(x)
@@ -107,7 +107,7 @@ async def collect():
     async with aiohttp.ClientSession() as session:
         all_stocks,listing_errors=await providers.universe(session);metadata,errors=await providers.screener_metadata(session);failures+=listing_errors+errors
         coverage['listed']=len(all_stocks);coverage['listing_complete']=not listing_errors;coverage['metadata']=len(metadata)
-        stocks={};excluded=Counter();audit={t:{'listed':True,'name':v.get('name'),'observed_at':now.isoformat(),'listing_source':'NASDAQ Trader symbol directory','daily_received':False} for t,v in all_stocks.items()}
+        stocks={};excluded=Counter();audit={t:{'listed':True,'name':v.get('name'),'observed_at':now.isoformat(),'listing_source':v.get('universe_source'),'daily_received':False} for t,v in all_stocks.items()}
         for t,s in all_stocks.items():
             s.update(metadata.get(t,{}));reason='warrant_depositary_security' if 'ADW' in s.get('name','') else scope_reason(s,include_trading=False)
             audit[t]['scope_reason']=reason
@@ -188,7 +188,7 @@ async def collect():
     except Exception as exc:fintel={'status':'검증 불가 · '+('HTTP '+str(exc.code) if getattr(exc,'code',None) else type(exc).__name__),'cross_verified':False}
     ordered=sorted(rows,key=lambda x:((x[1]['observed_score'] if x[1]['observed_score'] is not None else -1),x[1]['coverage']),reverse=True)
     valid=[(s,a) for s,a in ordered if a['candidate'] and a.get('candidate_type')=='short_verified' and not a['high_risk'] and s['halt_status'] in ('no_halt_detected','resumed')]
-    early_watch=sorted([(s,a) for s,a in rows if a.get('early_signal',{}).get('triggered') and s['halt_status'] in ('no_halt_detected','resumed')],key=lambda x:((x[1]['intraday'].get('daily_change_pct') or 0),x[1]['market'].get('dollar_ratio') or 0),reverse=True)[:20]
+    early_watch=sorted([(s,a) for s,a in rows if a.get('early_signal',{}).get('triggered') and s['halt_status'] in ('no_halt_detected','resumed')],key=lambda x:((x[1]['early_signal'].get('change_pct') or 0),x[1]['early_signal'].get('dollar_ratio') or 0),reverse=True)[:20]
     research=valid[:10];actionable=[(s,a) for s,a in valid if a['toss_orderable'] and a['dilution']['status'] in ('희석 공백 확인','즉시 출회 가능성 낮음')][:10]
     risk=[(s,a) for s,a in ordered if a['candidate'] and a['high_risk']]
     state=update_history(read('squeeze-state.json',{}),[a for s,a in rows],finished)
