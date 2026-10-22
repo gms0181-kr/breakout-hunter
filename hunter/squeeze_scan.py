@@ -193,6 +193,9 @@ async def collect():
     research=valid[:10];actionable=[(s,a) for s,a in valid if a['toss_orderable'] and a['dilution']['status'] in ('희석 공백 확인','즉시 출회 가능성 낮음')][:10]
     risk=[(s,a) for s,a in ordered if a['candidate'] and a['high_risk']]
     state=update_history(read('squeeze-state.json',{}),[a for s,a in rows],finished)
+    company_names={s['ticker']:s['name'] for s,a in rows}
+    for alert in state['alerts']:
+        if alert['ticker'] in company_names:alert['company_name']=company_names[alert['ticker']]
     from .squeeze_delivery import deliver
     state['delivery']=deliver(state.get('alerts',[]),read('squeeze-state.json',{}).get('delivery',{}),finished)
     archive,backtest=replay(read('squeeze-snapshots.json',{}),rows,finished)

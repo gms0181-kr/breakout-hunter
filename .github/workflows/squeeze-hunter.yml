@@ -35,6 +35,8 @@ jobs:
         env:
           ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
           ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           SQUEEZE_ALERT_WEBHOOK_URL: ${{ secrets.SQUEEZE_ALERT_WEBHOOK_URL }}
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
       - uses: actions/upload-artifact@v4

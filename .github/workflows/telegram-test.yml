@@ -1,0 +1,21 @@
+name: Telegram connection test
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-telegram:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Send explicit Telegram connection test
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python -m hunter.squeeze_telegram_test

@@ -4,7 +4,7 @@ from urllib.request import Request,urlopen
 from urllib.parse import urlparse
 from .squeeze_signals import instant
 
-def deliver(alerts,previous,now,send=None):
+def _webhook(alerts,previous,now,send=None):
     destination=os.getenv('SQUEEZE_ALERT_WEBHOOK_URL','')
     sent=list(previous.get('accepted_ids',[]));out={'checked_at':now.isoformat(),'accepted_ids':sent,'accepted_this_run':0,'failed_this_run':0,'status':'not_configured','note':'외부 알림 목적지 미연결; 브라우저 종료 시 전달 검증 안 됨'}
     if not destination:return out
@@ -26,4 +26,16 @@ def deliver(alerts,previous,now,send=None):
             out['failed_this_run']+=1
     out['accepted_ids']=sent[-2000:]
     if out['failed_this_run']:out['status']='delivery_failed'
+    return out
+
+def deliver(alerts,previous,now,send=None):
+    from .squeeze_telegram import deliver_telegram
+    out=_webhook(alerts,previous,now,send)
+    telegram=deliver_telegram(alerts,previous.get('telegram',{}),now,send)
+    out['telegram']=telegram
+    out['accepted_this_run']+=telegram['accepted_this_run']
+    out['failed_this_run']+=telegram['failed_this_run']
+    if telegram['status']!='not_configured':
+        out['status']=telegram['status']
+        out['note']='텔레그램 API 접수와 사용자의 실제 수신·열람은 구분합니다. '+telegram['note']
     return out

@@ -1,0 +1,27 @@
+# 텔레그램 경보 연결
+
+수집은 GitHub Actions 서버에서 실행되므로 사이트 브라우저가 닫혀 있어도 발송한다. 명목15분 스캔+실행/대기 시간 및 IEX 최소20분 지연이 있으며 실시간 푸시를 보장하지 않는다.
+
+## 사용자 연결 단계
+
+1. Telegram의 공식 @BotFather에서 /newbot으로 봇을 만든다. 발급된 봇 토큰은 대화창·소스·URL·스크린샷에 공유하지 않는다.
+2. 만든 봇과 본인 대화를 열고 /start를 보낸다.
+3. 본인 수신 대화의 숫자 chat ID를 확인한다. 자동으로 첫 번째 getUpdates 대화를 골라 타인에게 보내지 않는다. 공식 Bot API getUpdates의 message.chat.id를 사용하거나, 이미 확인한 본인 ID를 사용한다. 토큰을 URL에 넣어 브라우저 방문기록에 남기지 않는다.
+4. https://github.com/gms0181-kr/breakout-hunter/settings/secrets/actions 에서 Repository secrets 두 개를 추가한다.
+   - TELEGRAM_BOT_TOKEN: 발급된 봇 토큰
+   - TELEGRAM_CHAT_ID: 확인한 본인 수신 대화의 숫자 ID
+5. Actions → Telegram connection test → Run workflow를 실행한다. 실제 시장 신호가 아닌 연결 테스트라는 명시적인 메시지 1건만 전송한다. 작업 성공과 휴대폰 실제 도착을 각각 확인한다.
+6. 다음 Short Squeeze Hunter 실행부터 새 경보가 자동 발송된다. 수동으로 Run workflow를 실행해도 된다.
+
+Secrets API가 현재 연결 도구에서 지원되지 않으므로 토큰·수신 ID 입력은 사용자가 위 GitHub 화면에서 수행한다. 비밀번호나 토큰을 채팅으로 요구하지 않는다.
+
+## 검증 및 표시
+
+- HTTP 성공만으로 완료 처리하지 않는다. Telegram JSON ok=true, message_id, 응답 chat.id와 설정 대상 ID 일치까지 확인해야 접수 완료 ID에 기록한다. 실제 휴대폰 도착·열람 여부는 API 응답만으로 확정할 수 없다.
+- 채널별 접수 이력을 분리한다. 기존 웹훅이 받았던 이벤트라도 텔레그램 접수 이력이 없으면 별도로 보낸다.
+- 미설정/형식 오류/접수 실패/요청 제한/접수 확인을 구분한다. 토큰·수신 대화 ID·API 응답 원문·토큰 포함 예외 URL은 공개 JSON과 로그에 기록하지 않는다.
+- 여러 경보를 길이 제한 내 메시지 하나로 묶는다. 실제 메시지에 포함된 경보만 접수 완료로 기록한다. 실패한 경보는 다음 스캔에 재시도하고, 요청 제한은15분 대기한다. 지난1시간보다 오래된 경보는 새 알림으로 몰아서 보내지 않는다.
+- 외부 발송 후 저장 전 장애가 발생하면 재발송될 수 있다. Telegram 자체의 정확히1회 전송을 보장하지 않는다.
+- 단계명은 한글 표시이며 내부 단계 ID·점수·후보 판정은 변경하지 않는다. 가격 선행 경보는 숏스퀴즈 확정이나 매수 신호로 표시하지 않는다.
+
+공식 자료: https://core.telegram.org/bots/tutorial 및 https://core.telegram.org/bots/api#sendmessage
