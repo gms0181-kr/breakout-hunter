@@ -11,5 +11,5 @@ class ShortReportsTests(unittest.TestCase):
         r=finra_rows(raw,'20261021');self.assertEqual(r['TEST']['ratio_pct'],0);self.assertEqual(r['TEST']['total_volume'],1000);self.assertNotIn('BAD',r)
         with self.assertRaises(ValueError):finra_rows('wrong','20261021')
     def test_javascript_engine_regressions(self):
-        result=subprocess.run(['node','--test','tests/short-pressure.test.js'],capture_output=True,text=True,timeout=30)
+        result=subprocess.run(['node','--test','tests/short-pressure.test.js','tests/squeeze-store.test.js'],capture_output=True,text=True,timeout=30)
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)

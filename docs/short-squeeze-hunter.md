@@ -101,3 +101,36 @@ short-entry prices or liquidation levels.
 
 Original engines, original workflow schedules and Secrets values are
 preserved. No files or settings in `gms0181-kr/surge-radar` are touched.
+
+## Hunter ↔ Analysis integration
+
+`public/squeeze-store.js` owns a single immutable normalized server snapshot,
+selection, favorites, request deduplication and detail cache. Hunter rank rows,
+analysis cards, alerts and SEC conclusions all reference its canonical analysis
+object. The former browser 25/20/20/20/15 score has been removed;
+`hunter/squeeze_signals.py` is the sole score/CTB/availability engine for both
+features. `public/squeeze-engine.js` now exports chart geometry only, and
+`squeeze-charts.js` is the reused candlestick/volume/MA/VWAP/zone renderer.
+
+Clicking any Hunter row/watch symbol or alert opens
+`#short-squeeze/TICKER`. Direct URL reloads, browser Back and “헌터 순위로
+돌아가기” preserve the shared selected symbol. A symbol absent from the current
+snapshot stays explicitly absent; a different ticker is never substituted.
+Favorites are shared between both views. Long watchlists show150 at a time,
+with full-universe search and a load-more button.
+
+Collector schema2 stamps a snapshot_id on the rank, detail, embedded monitor
+and each lazy chart chunk. The store validates ticker uniqueness, canonical
+score consistency, coverage, source CTB values and timestamps. Different
+snapshot chart chunks, late responses from before a refresh, future data and
+conflicting detail scores are rejected. A failed refresh preserves the last
+whole snapshot; individual values are not mixed with legacy data.json or
+newer enrichment.json. Legacy source files remain in use by the original
+BREAKOUT engines, which are unchanged.
+
+FINRA daily short volume is collected once per Hunter run for the common
+snapshot and shown separately from official short interest. The existing
+collector/parser is reused and short volume does not add score points.
+All prior incomplete verification items (Fintel, contract-level supply
+conclusions, Toss orderability and historical performance evidence) remain
+explicitly incomplete; integration does not mark them verified.

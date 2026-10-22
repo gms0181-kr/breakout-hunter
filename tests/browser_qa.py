@@ -78,6 +78,7 @@ async def main():
                 await page.locator("#close").click()
             await page.locator('a[href="#short-squeeze"]').click()
             await page.wait_for_function("document.body.classList.contains('sq-mode')",timeout=15000)
+            await page.wait_for_function("window.SqueezeStore?.getSnapshot() && !SqueezeStore.isLoading()",timeout=60000)
             squeeze_count=await page.locator('[data-sq-select]').count()
             if squeeze_count:
                 buttons_sq=page.locator('[data-sq-select]')
@@ -103,20 +104,46 @@ async def main():
             assert await page.locator('#squeeze-hunter').is_visible()
             independent_count=await page.locator('#sh-list [data-sh-select]').count()
             if independent_count:
-                first=page.locator('#sh-list [data-sh-select]').first
-                selected_hunter=await first.get_attribute('data-sh-select')
-                await first.click()
-                assert selected_hunter in await page.locator('#sh-detail h2').inner_text()
-                assert await page.locator('#sh-detail .sh-stage-track>div').count()==5
-                assert await page.locator('#sh-detail .sq-grid5 .sq-panel').count()==5
                 await page.locator('#sh-search').fill('__NO_MATCH_INDEPENDENT__')
                 assert await page.locator('#sh-list [data-sh-select]').count()==0
                 await page.locator('#sh-search').fill('')
                 assert await page.locator('#sh-list [data-sh-select]').count()==independent_count
-                await page.locator('[data-sh-period="5D"]').click()
-                assert await page.locator('[data-sh-period="5D"]').get_attribute('aria-pressed')=='true'
                 assert await page.locator('#sh-top10 tbody tr').count()<=10
                 assert await page.locator('#sh-research tbody tr').count()<=10
+                ranking=page.locator('#sh-research [data-sh-select]')
+                chosen=ranking.first if await ranking.count() else page.locator('#sh-list [data-sh-select]').first
+                selected_hunter=await chosen.get_attribute('data-sh-select')
+                expected=await page.evaluate("t=>{const s=SqueezeStore.getSnapshot(),r=SqueezeStore.getRecord(t);return {id:s.snapshot_id,score:String(r.analysis.observed_score),coverage:String(r.analysis.coverage)}}",selected_hunter)
+                await chosen.click()
+                await page.wait_for_function("document.body.classList.contains('sq-mode') && !document.body.classList.contains('sh-mode')",timeout=15000)
+                assert selected_hunter in await page.locator('#sq-detail h2').inner_text()
+                assert await page.locator('#sq-detail').get_attribute('data-ticker')==selected_hunter
+                assert await page.locator('#sq-detail').get_attribute('data-observed-score')==expected['score']
+                assert await page.locator('#sq-detail').get_attribute('data-coverage')==expected['coverage']
+                assert await page.locator('#sq-detail').get_attribute('data-snapshot-id')==expected['id']
+                assert await page.locator('#sq-detail .sh-stage-track>div').count()==5
+                assert await page.locator('#sq-detail .sq-core-data .sq-panel').count()==5
+                assert await page.locator('#sq-detail .sq-score-grid .sq-panel').count()==5
+                await page.locator('[data-sq-period="5D"]').click()
+                assert await page.locator('[data-sq-period="5D"]').get_attribute('aria-pressed')=='true'
+                assert await page.locator('#sq-price svg').count()==1
+                if name=='desktop':
+                    await page.reload(wait_until='networkidle',timeout=60000)
+                    await page.wait_for_function("window.SqueezeStore?.getSnapshot() && !SqueezeStore.isLoading()",timeout=60000)
+                    assert selected_hunter in await page.locator('#sq-detail h2').inner_text()
+                    assert await page.locator('#sq-detail').get_attribute('data-observed-score')==await page.evaluate('String(SqueezeStore.getRecord().analysis.observed_score)')
+                await page.locator('#sq-search').fill(selected_hunter)
+                star=page.locator('[data-sq-star="'+selected_hunter+'"]')
+                if await star.get_attribute('aria-pressed')!='true':await star.click()
+                await page.locator('#sq-search').fill('')
+                await page.locator('#sq-back-hunter').click()
+                await page.wait_for_function("document.body.classList.contains('sh-mode')",timeout=15000)
+                await page.locator('#sh-filter').select_option('favorites')
+                assert await page.locator('#sh-list [data-sh-select="'+selected_hunter+'"]').count()==1
+                await page.locator('#sh-filter').select_option('all')
+                assert await page.evaluate('SqueezeStore.getSelected()')==selected_hunter
+                assert await page.locator('#squeeze-hunter').get_attribute('data-snapshot-id')==await page.evaluate('SqueezeStore.getSnapshot().snapshot_id')
+                print('shared_snapshot_score_verified '+name,flush=True)
             else:
                 assert '수집' in await page.locator('#sh-status').inner_text()
             await page.screenshot(path=f"qa/hunter-{name}.png",full_page=False,timeout=20000)
