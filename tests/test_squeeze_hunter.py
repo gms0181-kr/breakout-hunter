@@ -57,6 +57,12 @@ class IndependentHunterTests(unittest.TestCase):
         s,o=fixture();a=analyze(s,o,NOW);self.assertEqual(a['stage'],'EXPANSION');s['bars'][-1].update(close=1,high=1.02,low=.94,volume=1000);b=analyze(s,o,NOW);self.assertEqual(b['stage'],'FUEL BUILDING');h=update_history({},[a],NOW);h=update_history(h,[b],NOW+timedelta(minutes=15));self.assertEqual(h['history'][-1]['current'],'FUEL BUILDING')
     def test_alert_dedup(self):
         s,o=fixture();a=analyze(s,o,NOW);h=update_history({},[a],NOW);n=len(h['alerts']);h=update_history(h,[a],NOW+timedelta(minutes=15));self.assertEqual(len(h['alerts']),n)
+    def test_old_filing_is_not_new_disclosure_alert(self):
+        s,o=fixture();a=analyze(s,o,NOW);h=update_history({},[a],NOW-timedelta(minutes=15));a['dilution'].update(flags=['ATM'],documents=[{'accepted_at':(NOW-timedelta(days=10)).isoformat(),'flags':['ATM']}]);h=update_history(h,[a],NOW);self.assertFalse(any(x['kind']=='new_supply_disclosure' for x in h['alerts']))
+    def test_new_filing_alert_requires_actual_acceptance(self):
+        s,o=fixture();a=analyze(s,o,NOW);h=update_history({},[a],NOW-timedelta(minutes=15));a['dilution'].update(flags=['ATM'],documents=[{'accepted_at':(NOW-timedelta(minutes=5)).isoformat(),'flags':['ATM']}]);h=update_history(h,[a],NOW);self.assertTrue(any(x['kind']=='new_supply_disclosure' for x in h['alerts']))
+    def test_legacy_old_filing_alert_is_relabelled(self):
+        h=update_history({'alerts':[{'id':'legacy','kind':'new_supply_disclosure','source_at':(NOW-timedelta(days=10)).isoformat(),'occurred_at':NOW.isoformat()}]},[],NOW);self.assertEqual(h['alerts'][0]['kind'],'historical_supply_discovery')
     def test_no_prior_rank_carryover(self):
         s,o=fixture();a=analyze(s,o,NOW);h=update_history({},[a],NOW);h=update_history(h,[],NOW);self.assertIsNone(h['states']['TEST'])
     def test_fair_targets_no_legacy_scores(self):
