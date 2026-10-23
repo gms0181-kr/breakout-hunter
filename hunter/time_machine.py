@@ -17,22 +17,28 @@ def et_instant(value):
 
 def digest(value):return hashlib.sha256(json.dumps(value,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
 
-def known(record,cutoff):
+def known(record,cutoff,historical=False):
     if not isinstance(record,dict) or not record.get('source'):return False
     dates=[instant(record.get(k)) for k in ('event_time','available_at','retrieved_at')]
-    return all(d and d<=cutoff for d in dates) and dates[0]<=dates[1]<=dates[2]
+    if not all(dates) or not dates[0]<=dates[1]<=dates[2]:return False
+    if not dates[0]<=dates[1]<=cutoff:return False
+    published=instant(record.get('published_at')) if record.get('published_at') else None
+    if record.get('published_at') and (not published or published>dates[1]):return False
+    # Retrieval is an audit clock, not the date the market learned the information.
+    return dates[2]<=cutoff or (historical and bool(record.get('availability_basis')))
 
-def no_future(value,cutoff):
+def no_future(value,cutoff,historical=False):
     """Reject, rather than silently accept, nested dated revisions/publications."""
-    if isinstance(value,list):return [clean for v in value if (clean:=no_future(v,cutoff)) is not None]
+    if isinstance(value,list):return [clean for v in value if (clean:=no_future(v,cutoff,historical)) is not None]
     if not isinstance(value,dict):return value
     for k in ('as_of','observed_at','known_at','accepted','accepted_at','published_at','available_at','retrieved_at','time','timestamp'):
+        if k=='retrieved_at' and historical:continue
         if value.get(k) and (not instant(value[k]) or instant(value[k])>cutoff):return None
     for k in ('ex_date','settlement_date'):
         if value.get(k) and str(value[k])[:10]>cutoff.astimezone(ZoneInfo('America/New_York')).date().isoformat():return None
     clean={}
     for k,v in value.items():
-        item=no_future(v,cutoff)
+        item=no_future(v,cutoff,historical)
         if item is not None:clean[k]=item
     return clean
 
@@ -44,17 +50,20 @@ def run_detection(snapshot,as_of,mode='all'):
     cutoff=instant(as_of)
     if not cutoff:raise ValueError('분석 시각에 시간대가 필요합니다')
     if mode not in ('all','china'):raise ValueError('지원하지 않는 탐색 범위')
-    base={'as_of':cutoff.isoformat(),'mode':mode,'engine_hash':hashlib.sha256(Path(__file__).with_name('squeeze_signals.py').read_bytes()).hexdigest(),'snapshot_at':snapshot.get('available_at'),'source_commit':snapshot.get('source_commit'),'replay_type':'historical_input_backtest','universe_complete':False,'missing':[]}
-    if not known(snapshot,cutoff):
+    historical=snapshot.get('acquisition_mode')=='HISTORICAL RECONSTRUCTION'
+    acquisition='HISTORICAL RECONSTRUCTION' if historical else 'ARCHIVE REPLAY'
+    base={'acquisition_mode':acquisition,'coverage_report':snapshot.get('coverage_report',{}),'as_of':cutoff.isoformat(),'mode':mode,'engine_hash':hashlib.sha256(Path(__file__).with_name('squeeze_signals.py').read_bytes()).hexdigest(),'snapshot_at':snapshot.get('available_at'),'source_commit':snapshot.get('source_commit'),'replay_type':'historical_input_backtest','universe_complete':False,'missing':[]}
+    if not known(snapshot,cutoff,historical):
         return {**base,'status':'NOT REPRODUCIBLE','reason':'분석 시각 이전에 저장·이용 가능했던 종목 스냅샷 없음','examined':0,'candidate_count':0,'top20':[],'frozen':frozen([],cutoff.isoformat(),mode,None)}
     results=[];missing=[];examined=0;usable=0;china_unknown=0;rejected=0
     for row in snapshot.get('rows',[]):
         stock={};obs={};provenance=[];gaps=[]
         for key,record in row.get('inputs',{}).items():
-            if not known(record,cutoff):gaps.append(key);rejected+=1;continue
-            value=no_future(copy.deepcopy(record.get('value')),cutoff)
+            if not known(record,cutoff,historical):gaps.append(key);rejected+=1;continue
+            value=no_future(copy.deepcopy(record.get('value')),cutoff,historical)
             if value is None:gaps.append(key);rejected+=1;continue
-            provenance.append({k:record[k] for k in ('event_time','available_at','retrieved_at','source')})
+            provenance.append({k:record.get(k) for k in ('event_time','published_at','available_at','retrieved_at','source','availability_basis','availability_verified')})
+            if historical and record.get('availability_verified') is not True:gaps.append(key+' 공개 시각·원본 버전 미검증')
             if key=='stock':stock=value
             elif key=='observation':obs=value
             else:stock[key]=value
@@ -75,7 +84,7 @@ def run_detection(snapshot,as_of,mode='all'):
     # Commit the complete candidate set before any future-data reader is invoked.
     locked=frozen(results,cutoff.isoformat(),mode,snapshot.get('source_commit'))
     status='VERIFIED REPLAY' if usable and snapshot.get('universe_complete') and not missing and not rejected else 'PARTIAL REPLAY' if usable else 'NOT REPRODUCIBLE'
-    return {**base,'status':status,'reason':('과거 저장 입력으로 현재 엔진 재실행 · 당시 저장 신호와 구분; 전체 종목 원자료·공개 시각 완전성 미검증' if usable else '분석 가능한 과거 가격 입력 또는 당시 검증된 범위 분류 없음'),'examined':examined,'usable_price_stocks':usable,'archived_listing_count':snapshot.get('listing_count') or None,'snapshot_lag_minutes':(cutoff-instant(snapshot['available_at'])).total_seconds()/60,'china_unverified':china_unknown,'rejected_inputs':rejected,'missing':sorted(set(missing+['전체 상장 원자료·탈락 종목 메타데이터의 완전성 미검증'])),'candidate_count':len(results),'top20':results[:20],'frozen':locked}
+    return {**base,'status':status,'reason':(('외부 과거 시세 재수집 · 현재/비활성 자산 카탈로그의 불완전 모집단; 당시 전체 상장 목록·원본 버전 미검증' if historical else '과거 저장 입력으로 현재 엔진 재실행 · 당시 저장 신호와 구분; 전체 종목 원자료·공개 시각 완전성 미검증') if usable else '분석 가능한 과거 가격 입력 또는 당시 검증된 범위 분류 없음'),'examined':examined,'usable_price_stocks':usable,'archived_listing_count':snapshot.get('listing_count') or None,'snapshot_lag_minutes':(cutoff-instant(snapshot['available_at'])).total_seconds()/60,'china_unverified':china_unknown,'rejected_inputs':rejected,'missing':sorted(set(missing+['전체 상장 원자료·탈락 종목 메타데이터의 완전성 미검증'])),'candidate_count':len(results),'top20':results[:20],'frozen':locked}
 
 if __name__=='__main__':
     import argparse
