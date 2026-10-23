@@ -47,7 +47,7 @@ def normalize(commit,report,cache,series):
         if original.get('intraday'):inputs['intraday']=envelope(original['intraday'],at,'Alpaca IEX 5min archived in '+source)
         if original.get('sec'):inputs['sec']=envelope(original['sec'],at,'SEC source-linked documents archived in '+source)
         rows.append({'inputs':inputs,'stored_signal':{'as_of':summary.get('analysis',{}).get('as_of'),'candidate':summary.get('analysis',{}).get('candidate'),'stage':summary.get('analysis',{}).get('stage'),'score':summary.get('analysis',{}).get('observed_score'),'note':'당시 저장 신호 · 현재 엔진 재계산과 구분'}})
-    return {'schema_version':2,'source_commit':sha,'event_time':report['updated_at'],'available_at':at,'retrieved_at':at,'source':source,'engine_hash':hashlib.sha256(Path('hunter/squeeze_signals.py').read_bytes()).hexdigest(),'universe_complete':False,'listing_count':len(report.get('universe_audit',{})),'rows':rows}
+    return {'schema_version':2,'source_commit':sha,'event_time':report['updated_at'],'available_at':at,'retrieved_at':at,'source':source,'engine_hash':hashlib.sha256(Path('hunter/squeeze_signals.py').read_bytes()).hexdigest(),'universe_complete':False,'listing_count':len(report.get('universe_audit',{})) or None,'rows':rows}
 
 def build_one(commit):
     sha=commit['sha'];file=OUT/(sha+'.json')
@@ -62,6 +62,8 @@ def build_one(commit):
             for shard in pool.map(get,letters):series.update(shard)
         write(file,normalize(commit,report,cache,series))
     d=json.loads(file.read_text())
+    if d.get('listing_count')==0:
+        d['listing_count']=None;write(file,d)
     return {'commit':sha,'available_at':d['available_at'],'file':sha+'.json','stocks':len(d['rows']),'listing_count':d['listing_count'],'usable_price_stocks':sum(len(r['inputs'].get('bars',{}).get('value',[]))>=22 for r in d['rows']),'status':'PARTIAL REPLAY' if any(len(r['inputs'].get('bars',{}).get('value',[]))>=22 for r in d['rows']) else 'NOT REPRODUCIBLE','sha256':hashlib.sha256(file.read_bytes()).hexdigest()}
 
 def future_data(snapshot):

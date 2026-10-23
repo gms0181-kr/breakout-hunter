@@ -75,7 +75,7 @@ def run_detection(snapshot,as_of,mode='all'):
     # Commit the complete candidate set before any future-data reader is invoked.
     locked=frozen(results,cutoff.isoformat(),mode,snapshot.get('source_commit'))
     status='VERIFIED REPLAY' if usable and snapshot.get('universe_complete') and not missing and not rejected else 'PARTIAL REPLAY' if usable else 'NOT REPRODUCIBLE'
-    return {**base,'status':status,'reason':('과거 저장 입력으로 현재 엔진 재실행 · 당시 저장 신호와 구분; 전체 종목 원자료·공개 시각 완전성 미검증' if usable else '분석 가능한 과거 가격 입력 또는 당시 검증된 범위 분류 없음'),'examined':examined,'usable_price_stocks':usable,'archived_listing_count':snapshot.get('listing_count'),'snapshot_lag_minutes':(cutoff-instant(snapshot['available_at'])).total_seconds()/60,'china_unverified':china_unknown,'rejected_inputs':rejected,'missing':sorted(set(missing+['전체 상장 원자료·탈락 종목 메타데이터의 완전성 미검증'])),'candidate_count':len(results),'top20':results[:20],'frozen':locked}
+    return {**base,'status':status,'reason':('과거 저장 입력으로 현재 엔진 재실행 · 당시 저장 신호와 구분; 전체 종목 원자료·공개 시각 완전성 미검증' if usable else '분석 가능한 과거 가격 입력 또는 당시 검증된 범위 분류 없음'),'examined':examined,'usable_price_stocks':usable,'archived_listing_count':snapshot.get('listing_count') or None,'snapshot_lag_minutes':(cutoff-instant(snapshot['available_at'])).total_seconds()/60,'china_unverified':china_unknown,'rejected_inputs':rejected,'missing':sorted(set(missing+['전체 상장 원자료·탈락 종목 메타데이터의 완전성 미검증'])),'candidate_count':len(results),'top20':results[:20],'frozen':locked}
 
 if __name__=='__main__':
     import argparse
