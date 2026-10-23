@@ -61,6 +61,7 @@ class HistoricalClocksTests(unittest.TestCase):
             v=copy.deepcopy(r);v[key]=(NOW+timedelta(seconds=1)).isoformat();self.assertFalse(known(v,NOW,True))
     def test_nested_future_sec_is_still_rejected_but_retrieval_allowed(self):
         later=(NOW+timedelta(days=1)).isoformat()
+        self.assertIsNone(no_future({'event_time':later},NOW,True))
         v={'retrieved_at':later,'sec':[{'accepted':later},{'accepted':NOW.isoformat()}]}
         clean=no_future(v,NOW,True);self.assertEqual(clean['retrieved_at'],later);self.assertEqual(len(clean['sec']),1)
     def test_current_session_daily_and_future_intraday_excluded(self):

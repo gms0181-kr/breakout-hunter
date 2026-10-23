@@ -47,7 +47,10 @@ jobs:
         if: always()
         with:
           name: historical-reconstruction-evidence
-          path: public/time-machine/reconstruction-latest.json
+          retention-days: 90
+          path: |
+            public/time-machine/reconstruction-latest.json
+            public/time-machine/reconstruction-latest.inputs.json.gz
       - name: Publish isolated reconstruction result
         run: |
           git config user.name breakout-hunter-bot

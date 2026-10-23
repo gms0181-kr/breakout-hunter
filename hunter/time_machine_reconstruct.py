@@ -4,7 +4,7 @@ No archive rows and no future returns are read. The asset catalogue is a discove
 superset only; it is NOT a historical exchange security master. Price existence
 cannot prove historical common-stock / small-cap eligibility.
 """
-import argparse,asyncio,json,os,re
+import argparse,asyncio,gzip,json,os,re
 from collections import Counter
 from datetime import datetime,timedelta,timezone
 from pathlib import Path
@@ -121,7 +121,15 @@ def main():
     if not key or not secret:raise ValueError('기존 Alpaca Secrets 접근 불가; 값은 출력하지 않습니다')
     async def run():
         async with aiohttp.ClientSession() as session:return await reconstruct(Client(session,key,secret),cutoff,args.scope)
-    result=asyncio.run(run());path=Path(args.output);path.parent.mkdir(parents=True,exist_ok=True);path.write_text(json.dumps(result,ensure_ascii=False,allow_nan=False))
+    result=asyncio.run(run());path=Path(args.output);path.parent.mkdir(parents=True,exist_ok=True)
+    # Full collected inputs are evidence artifacts, never a >100MB Git blob.
+    evidence=path.with_suffix('.inputs.json.gz')
+    with gzip.open(evidence,'wt',encoding='utf-8') as f:json.dump(result,f,ensure_ascii=False,allow_nan=False,separators=(',',':'))
+    summary={k:v for k,v in result.items() if k!='snapshot'}
+    summary['result']=dict(result['result']);locked=result['result']['frozen']
+    summary['result']['frozen']={'selection_hash':locked['selection_hash'],'candidate_count':len(locked['candidates'])}
+    summary['evidence_note']='Complete inputs and frozen candidate set retained in GitHub Actions evidence artifact; public report displays TOP20.'
+    path.write_text(json.dumps(summary,ensure_ascii=False,allow_nan=False,separators=(',',':'))) 
     print(json.dumps({'status':result['result']['status'],'candidate_count':result['result']['candidate_count'],'coverage':result['result']['coverage_report']},ensure_ascii=False))
 
 if __name__=='__main__':main()

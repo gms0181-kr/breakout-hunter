@@ -31,7 +31,7 @@ def no_future(value,cutoff,historical=False):
     """Reject, rather than silently accept, nested dated revisions/publications."""
     if isinstance(value,list):return [clean for v in value if (clean:=no_future(v,cutoff,historical)) is not None]
     if not isinstance(value,dict):return value
-    for k in ('as_of','observed_at','known_at','accepted','accepted_at','published_at','available_at','retrieved_at','time','timestamp'):
+    for k in ('event_time','as_of','observed_at','known_at','accepted','accepted_at','published_at','available_at','retrieved_at','time','timestamp'):
         if k=='retrieved_at' and historical:continue
         if value.get(k) and (not instant(value[k]) or instant(value[k])>cutoff):return None
     for k in ('ex_date','settlement_date'):

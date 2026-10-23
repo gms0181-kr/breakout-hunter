@@ -51,6 +51,18 @@ async def main():
         await page.locator('#tm-date').fill('2026-10-15');await page.locator('#tm-time').fill('09:30');await page.locator('#tm-run').click()
         await page.wait_for_function("!document.getElementById('tm-run').disabled",timeout=30000)
         assert 'NOT REPRODUCIBLE' in await page.locator('#tm-status').inner_text()
+        # Reconstruction requests cannot silently fall back to saved rows.
+        await page.locator('#tm-acquisition').select_option('historical')
+        assert await page.locator('#tm-reconstruction').is_visible()
+        fixture={'as_of':'2026-10-15T16:00:00+00:00','result':{'mode':'all','acquisition_mode':'HISTORICAL RECONSTRUCTION','status':'PARTIAL REPLAY','reason':'External reconstruction browser fixture','requested_et':'2026-10-15T12:00 ET','examined':2,'candidate_count':0,'top20':[],'usable_price_stocks':2,'coverage_report':{'requested_symbols':3,'with_historical_prices':2},'missing':['historical eligibility unverified'],'frozen':{'selection_hash':'test'}}}
+        await page.route('**/time-machine/reconstruction-latest.json',lambda route:route.fulfill(json=fixture))
+        await page.locator('#tm-time').fill('12:00');await page.locator('#tm-run').click()
+        await page.wait_for_function("!document.getElementById('tm-run').disabled")
+        assert 'HISTORICAL RECONSTRUCTION' in await page.locator('#tm-status').inner_text()
+        assert await page.locator('#tm-evaluate').is_disabled()
+        await page.locator('#tm-time').fill('12:01');await page.locator('#tm-run').click()
+        await page.wait_for_function("!document.getElementById('tm-run').disabled")
+        assert '선택한 시각·범위의 워크플로' in await page.locator('#tm-status').inner_text()
         await page.set_viewport_size({'width':390,'height':844});await page.screenshot(path='qa/time-machine-mobile.png',full_page=True)
         assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth'), 'mobile overflow'
         assert not errors,errors

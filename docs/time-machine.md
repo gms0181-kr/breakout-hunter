@@ -86,3 +86,7 @@ Free IEX history is partial-market data; a currently downloadable symbol
 directory is not a historical listing master. Full historical exchange coverage
 has not been demonstrated from these free endpoints. Permissions are measured
 by actual workflow responses, not assumed from documentation.
+
+Full fetched input and complete frozen selection evidence is uploaded as a gzip
+GitHub Actions artifact (90-day retention). The public JSON contains coverage,
+TOP20 and the full selection hash, avoiding oversized Git blobs.
