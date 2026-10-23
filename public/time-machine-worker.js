@@ -3,8 +3,8 @@ let runtime,initialized;
 async function initialize(index){
  if(initialized)return initialized;
  initialized=(async()=>{
-  importScripts('https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.js');
-  runtime=await loadPyodide({indexURL:'https://cdn.jsdelivr.net/pyodide/v314.0.7/full/'});
+  importScripts('https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js');
+  runtime=await loadPyodide({indexURL:'https://cdn.jsdelivr.net/pyodide/v0.27.7/full/'});
   runtime.FS.mkdirTree('/app/hunter');runtime.FS.writeFile('/app/hunter/__init__.py','');
   for(const name of index.engine_modules){const response=await fetch('./time-machine/engine/'+name+'.py');if(!response.ok)throw Error('엔진 소스 누락');const bytes=new Uint8Array(await response.arrayBuffer());const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');if(hash!==index.engine_hashes[name])throw Error('엔진 버전 해시 불일치');runtime.FS.writeFile('/app/hunter/'+name+'.py',bytes)}
   const zones=await(await fetch('./time-machine/tzdata.json')).json();for(const [name,b64] of Object.entries(zones)){runtime.FS.mkdirTree('/tz/'+name.split('/').slice(0,-1).join('/'));runtime.FS.writeFile('/tz/'+name,Uint8Array.from(atob(b64),c=>c.charCodeAt(0)))}

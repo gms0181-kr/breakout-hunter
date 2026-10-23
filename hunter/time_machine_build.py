@@ -35,7 +35,7 @@ def normalize(commit,report,cache,series):
             if k in original:stock[k]=original[k]
         inputs={'stock':envelope(stock,at,source),'observation':envelope(symbols.get(t,detail.get('observation',{})),at,source)}
         bars=[]
-        for values in series.get(t,[])[-65:]:
+        for values in (series.get(t) or [[b.get(k) for k in ('time','open','high','low','close','volume','vwap')] for b in original.get('bars',[]) if b.get('complete') is not False])[-65:]:
             b=dict(zip(('time','open','high','low','close','volume','vwap'),values));dt=instant(b['time'])
             if not dt:continue
             day=dt.astimezone(ZoneInfo('America/New_York')).date()
@@ -47,11 +47,11 @@ def normalize(commit,report,cache,series):
         if original.get('intraday'):inputs['intraday']=envelope(original['intraday'],at,'Alpaca IEX 5min archived in '+source)
         if original.get('sec'):inputs['sec']=envelope(original['sec'],at,'SEC source-linked documents archived in '+source)
         rows.append({'inputs':inputs,'stored_signal':{'as_of':summary.get('analysis',{}).get('as_of'),'candidate':summary.get('analysis',{}).get('candidate'),'stage':summary.get('analysis',{}).get('stage'),'score':summary.get('analysis',{}).get('observed_score'),'note':'당시 저장 신호 · 현재 엔진 재계산과 구분'}})
-    return {'schema_version':1,'source_commit':sha,'event_time':report['updated_at'],'available_at':at,'retrieved_at':at,'source':source,'engine_hash':hashlib.sha256(Path('hunter/squeeze_signals.py').read_bytes()).hexdigest(),'universe_complete':False,'listing_count':len(report.get('universe_audit',{})),'rows':rows}
+    return {'schema_version':2,'source_commit':sha,'event_time':report['updated_at'],'available_at':at,'retrieved_at':at,'source':source,'engine_hash':hashlib.sha256(Path('hunter/squeeze_signals.py').read_bytes()).hexdigest(),'universe_complete':False,'listing_count':len(report.get('universe_audit',{})),'rows':rows}
 
 def build_one(commit):
     sha=commit['sha'];file=OUT/(sha+'.json')
-    if not file.exists():
+    if not file.exists() or json.loads(file.read_text()).get('schema_version',0)<2:
         report=raw(sha,'squeeze-hunter.json');cache=raw(sha,'squeeze-cache.json')
         letters=sorted({x['ticker'][0] for x in report.get('observations',[])})
         def get(letter):
@@ -62,7 +62,7 @@ def build_one(commit):
             for shard in pool.map(get,letters):series.update(shard)
         write(file,normalize(commit,report,cache,series))
     d=json.loads(file.read_text())
-    return {'commit':sha,'available_at':d['available_at'],'file':sha+'.json','stocks':len(d['rows']),'listing_count':d['listing_count'],'status':'PARTIAL REPLAY','sha256':hashlib.sha256(file.read_bytes()).hexdigest()}
+    return {'commit':sha,'available_at':d['available_at'],'file':sha+'.json','stocks':len(d['rows']),'listing_count':d['listing_count'],'usable_price_stocks':sum(len(r['inputs'].get('bars',{}).get('value',[]))>=22 for r in d['rows']),'status':'PARTIAL REPLAY' if any(len(r['inputs'].get('bars',{}).get('value',[]))>=22 for r in d['rows']) else 'NOT REPRODUCIBLE','sha256':hashlib.sha256(file.read_bytes()).hexdigest()}
 
 def future_data(snapshot):
     out={}
@@ -94,8 +94,9 @@ def main():
     hashes={m:hashlib.sha256((runtime/(m+'.py')).read_bytes()).hexdigest() for m in MODULES}
     write(OUT/'index.json',{'schema_version':1,'built_at':datetime.now(timezone.utc).isoformat(),'snapshots':entries,'engine_modules':MODULES,'engine_hashes':hashes,'limitations':['과거 전체 상장 원자료·중국계 분류 완전성 미검증','당시 CTB·SEC 공개 시각 누락은 추정하지 않음','과거 IEX 병합 조정 기준·실제 체결 가격 재현 미검증']})
     if entries:
-        first=json.loads((OUT/entries[0]['file']).read_text());last=json.loads((OUT/entries[-1]['file']).read_text())
-        replay=run_detection(first,entries[0]['available_at']);outcomes=future_data(last)
+        demo_entry=next((e for e in entries if e['status']=='PARTIAL REPLAY'),entries[0])
+        first=json.loads((OUT/demo_entry['file']).read_text());last=json.loads((OUT/entries[-1]['file']).read_text())
+        replay=run_detection(first,demo_entry['available_at']);outcomes=future_data(last)
         # A later provider adjustment may not be retroactively used for detection.
         # For outcome comparison only, require >=20 identical overlapping OHLCV bars.
         for entry in entries:

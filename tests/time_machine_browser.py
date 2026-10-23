@@ -10,7 +10,7 @@ from playwright.async_api import async_playwright
 async def main():
     server=ThreadingHTTPServer(('127.0.0.1',8765),partial(SimpleHTTPRequestHandler,directory='public'))
     threading.Thread(target=server.serve_forever,daemon=True).start()
-    index=json.loads(Path('public/time-machine/index.json').read_text());date=(datetime.fromisoformat(index['snapshots'][0]['available_at'].replace('Z','+00:00'))+timedelta(minutes=1)).astimezone(ZoneInfo('America/New_York'))
+    index=json.loads(Path('public/time-machine/index.json').read_text());date=(datetime.fromisoformat(next(e for e in index['snapshots'] if e['status']=='PARTIAL REPLAY')['available_at'].replace('Z','+00:00'))+timedelta(minutes=1)).astimezone(ZoneInfo('America/New_York'))
     Path('qa').mkdir(exist_ok=True)
     async with async_playwright() as p:
         browser=await p.chromium.launch()

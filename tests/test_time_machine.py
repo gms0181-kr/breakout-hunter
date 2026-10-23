@@ -7,7 +7,7 @@ from hunter.time_machine_evaluate import evaluate
 
 NOW=datetime(2026,10,22,20,tzinfo=timezone.utc)
 def record(value):return {'value':value,'event_time':NOW.isoformat(),'available_at':NOW.isoformat(),'retrieved_at':NOW.isoformat(),'source':'https://example.org/archive'}
-def snapshot():return {**record(None),'source_commit':'a'*40,'rows':[{'inputs':{'stock':record({'ticker':'X','name':'X Corp'}),'observation':record({})}}]}
+def snapshot():return {**record(None),'source_commit':'a'*40,'rows':[{'inputs':{'stock':record({'ticker':'X','name':'X Corp'}),'observation':record({}),'bars':record([{'time':(NOW-timedelta(days=22-i)).isoformat(),'open':10,'high':11,'low':9,'close':10,'volume':1000,'vwap':10} for i in range(22)])}}]}
 class TimeMachineTests(unittest.TestCase):
     def test_requires_all_four_provenance_fields(self):
         r=record(1);self.assertTrue(known(r,NOW))
@@ -57,3 +57,7 @@ class TimeMachineTests(unittest.TestCase):
     def test_actual_engine_reused_without_weight_replacement(self):
         from hunter.squeeze_signals import WEIGHTS
         self.assertEqual(WEIGHTS,{'short_pressure':30,'capital_inflow':25,'price_structure':20,'dilution_gap':20,'catalyst':5})
+
+    def test_no_archived_bars_is_not_reproducible(self):
+        s=snapshot();s['rows'][0]['inputs'].pop('bars')
+        self.assertEqual(run_detection(s,NOW.isoformat())['status'],'NOT REPRODUCIBLE')
