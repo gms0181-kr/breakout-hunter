@@ -1,6 +1,7 @@
 """Future-only reader. Detection never imports this module or accepts its data."""
 import copy
 from datetime import timedelta
+from zoneinfo import ZoneInfo
 from .squeeze_signals import instant,finite
 from .time_machine import digest
 
@@ -15,12 +16,12 @@ def evaluate(selection,outcomes,stop_pct=5,slippage_bps=10,shares=100):
         bars=sorted([b for b in data.get('bars',[]) if instant(b.get('event_time')) and instant(b['event_time'])>cutoff and instant(b.get('session_open')) and instant(b['session_open'])>cutoff and all(finite(b.get(k)) and b[k]>0 for k in ('open','high','low','close','volume'))],key=lambda b:b['event_time'])
         if not bars:rows.append({**entry,'reason':'신호 이후 새 정규장 일봉·호가 기록 미확보'});continue
         end=instant(bars[min(4,len(bars)-1)]['event_time'])
-        splits=[e for e in data.get('split_events',[]) if str(e.get('ex_date',''))[:10]>cutoff.date().isoformat() and str(e.get('ex_date',''))[:10]<=end.date().isoformat()]
+        splits=[e for e in data.get('split_events',[]) if str(e.get('ex_date',''))[:10]>cutoff.astimezone(ZoneInfo('America/New_York')).date().isoformat() and str(e.get('ex_date',''))[:10]<=end.date().isoformat()]
         basis=data.get('price_basis_by_snapshot',{}).get(selection.get('source_snapshot'),data.get('price_basis_verified',False))
         if splits or not basis:
             rows.append({**entry,'reason':'병합·수정주가 기준의 시점 간 일치 미검증'});continue
         price=bars[0]['open']*(1+slippage_bps/10000)
-        entry.update(status='PROXY ONLY',entry_at=bars[0]['session_open'],entry_price=price,entry_basis='신호 이후 첫 관측 정규장 일봉 시가 + 슬리피지 가정; 실제 체결 가능 가격 아님',source=data.get('source'),liquidity={'shares':shares,'first_day_observed_volume':bars[0]['volume'],'participation_pct':100*shares/bars[0]['volume'],'partial_market':True,'quotes_available':False},session='regular',extended_hours='프리마켓·애프터마켓 체결 재현 불가')
+        entry.update(status='PROXY ONLY',entry_at=bars[0]['session_open'] if data.get('session_verified') is True else None,reference_day=bars[0]['event_time'][:10],entry_price=price,entry_basis='신호 다음 거래일의 일봉 시가 + 슬리피지 가정; 정규장 시가·체결 시각·가격 미검증',source=data.get('source'),liquidity={'shares':shares,'first_day_observed_volume':bars[0]['volume'],'participation_pct':100*shares/bars[0]['volume'],'partial_market':True,'quotes_available':False},session='regular' if data.get('session_verified') is True else 'unverified_daily_aggregate',extended_hours='프리마켓·애프터마켓 체결 재현 불가')
         for n in (1,3,5):
             if len(bars)<n:entry['horizons'][str(n)]={'status':'NOT MATURE'};continue
             part=bars[:n];target=price*1.1;stop=price*(1-stop_pct/100);order='not_hit'

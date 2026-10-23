@@ -70,8 +70,8 @@ def future_data(snapshot):
         inputs=row['inputs'];s=inputs['stock']['value'];bars=[]
         for b in inputs.get('bars',{}).get('value',[]):
             dt=instant(b['time']).astimezone(ZoneInfo('America/New_York'));day=dt.date()
-            bars.append({**b,'session_open':datetime.combine(day,time(9,30),ZoneInfo('America/New_York')).isoformat(),'event_time':datetime.combine(day,time(16),ZoneInfo('America/New_York')).isoformat()})
-        out[s['ticker']]={'bars':bars,'source':inputs.get('bars',{}).get('source'),'split_events':s.get('split_check',{}).get('events',[]),'price_basis_verified':False}
+            bars.append({**b,'session_open':datetime.combine(day,time(0,0),ZoneInfo('America/New_York')).isoformat(),'event_time':datetime.combine(day,time(20),ZoneInfo('America/New_York')).isoformat()})
+        out[s['ticker']]={'bars':bars,'source':inputs.get('bars',{}).get('source'),'split_events':s.get('split_check',{}).get('events',[]),'price_basis_verified':False,'session_verified':False}
     return out
 
 def main():

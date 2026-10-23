@@ -29,7 +29,7 @@ def no_future(value,cutoff):
     for k in ('as_of','observed_at','known_at','accepted','accepted_at','published_at','available_at','retrieved_at','time','timestamp'):
         if value.get(k) and (not instant(value[k]) or instant(value[k])>cutoff):return None
     for k in ('ex_date','settlement_date'):
-        if value.get(k) and str(value[k])[:10]>cutoff.date().isoformat():return None
+        if value.get(k) and str(value[k])[:10]>cutoff.astimezone(ZoneInfo('America/New_York')).date().isoformat():return None
     clean={}
     for k,v in value.items():
         item=no_future(v,cutoff)

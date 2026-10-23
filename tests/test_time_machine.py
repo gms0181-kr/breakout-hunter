@@ -61,3 +61,9 @@ class TimeMachineTests(unittest.TestCase):
     def test_no_archived_bars_is_not_reproducible(self):
         s=snapshot();s['rows'][0]['inputs'].pop('bars')
         self.assertEqual(run_detection(s,NOW.isoformat())['status'],'NOT REPRODUCIBLE')
+
+    def test_daily_proxy_never_claims_regular_session_or_verified_fill(self):
+        lock=frozen([{'ticker':'X','name':'X','status':'PARTIAL REPLAY'}],NOW.isoformat(),'all','a')
+        b={'event_time':'2026-10-23T20:00:00+00:00','session_open':'2026-10-23T13:30:00+00:00','open':10,'high':12,'low':9,'close':11,'volume':10000}
+        r=evaluate(lock,{'X':{'bars':[b],'price_basis_verified':True}})['rows'][0]
+        self.assertIsNone(r['entry_at']);self.assertFalse(r['fill_verified']);self.assertEqual(r['session'],'unverified_daily_aggregate')
