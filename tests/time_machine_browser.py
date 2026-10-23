@@ -54,7 +54,7 @@ async def main():
         # Reconstruction requests cannot silently fall back to saved rows.
         await page.locator('#tm-acquisition').select_option('historical')
         assert await page.locator('#tm-reconstruction').is_visible()
-        fixture={'as_of':'2026-10-15T16:00:00+00:00','result':{'mode':'all','acquisition_mode':'HISTORICAL RECONSTRUCTION','status':'PARTIAL REPLAY','reason':'External reconstruction browser fixture','requested_et':'2026-10-15T12:00 ET','examined':2,'candidate_count':0,'top20':[],'usable_price_stocks':2,'coverage_report':{'requested_symbols':3,'with_historical_prices':2},'missing':['historical eligibility unverified'],'frozen':{'selection_hash':'test'}}}
+        fixture={'retrieved_at':'2026-10-23T17:40:58.788786+00:00','as_of':'2026-10-15T16:00:00+00:00','result':{'mode':'all','acquisition_mode':'HISTORICAL RECONSTRUCTION','status':'PARTIAL REPLAY','reason':'External reconstruction browser fixture','requested_et':'2026-10-15T12:00 ET','examined':2,'candidate_count':0,'top20':[],'usable_price_stocks':2,'coverage_report':{'requested_symbols':3,'with_historical_prices':2},'missing':['historical eligibility unverified'],'frozen':{'selection_hash':'test'}}}
         await page.route('**/time-machine/reconstruction-latest.json',lambda route:route.fulfill(json=fixture))
         await page.locator('#tm-time').fill('12:00')
         assert '2026-10-15T12:00 ET' in await page.locator('#tm-request').inner_text()
@@ -64,6 +64,9 @@ async def main():
         assert '적격 검증 0종목' in await page.locator('#tm-detection-title').inner_text()
         assert '외부 조회 시각' in await page.locator('#tm-summary').inner_text()
         assert '이후 성과 자료 미연결' in await page.locator('#tm-results').inner_text()
+        await page.set_viewport_size({'width':320,'height':740})
+        assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth'), 'external retrieval timestamp overflow'
+        await page.set_viewport_size({'width':1440,'height':1000})
         assert await page.locator('#tm-evaluate').is_disabled()
         await page.locator('#tm-time').fill('12:01');await page.locator('#tm-run').click()
         await page.wait_for_function("!document.getElementById('tm-run').disabled")
