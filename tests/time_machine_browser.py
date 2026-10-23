@@ -61,6 +61,7 @@ async def main():
         await page.locator('#tm-run').click()
         await page.wait_for_function("!document.getElementById('tm-run').disabled")
         assert 'HISTORICAL RECONSTRUCTION' in await page.locator('#tm-status').inner_text()
+        assert '적격 검증 0종목' in await page.locator('#tm-detection-title').inner_text()
         assert await page.locator('#tm-evaluate').is_disabled()
         await page.locator('#tm-time').fill('12:01');await page.locator('#tm-run').click()
         await page.wait_for_function("!document.getElementById('tm-run').disabled")
