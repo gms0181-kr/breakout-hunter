@@ -63,6 +63,8 @@ async def main():
         await page.locator('#tm-time').fill('12:01');await page.locator('#tm-run').click()
         await page.wait_for_function("!document.getElementById('tm-run').disabled")
         assert '선택한 시각·범위의 워크플로' in await page.locator('#tm-status').inner_text()
+        assert '이전 요청의 후보를 표시하지 않음' in await page.locator('#tm-candidates').inner_text()
+        assert await page.locator('#tm-evaluate').is_disabled()
         await page.set_viewport_size({'width':390,'height':844});await page.screenshot(path='qa/time-machine-mobile.png',full_page=True)
         assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth'), 'mobile overflow'
         assert not errors,errors
