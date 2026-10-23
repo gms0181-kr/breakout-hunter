@@ -144,3 +144,10 @@ do not prove an authenticated dispatch succeeded. Report these separately.
 
 The gateway has no automatic paid-service purchase and does not change Site
 sharing. It is owner-private; do not make it public without a new auth review.
+
+Completed external reports are indexed during Pages publication by
+`scripts/build_time_machine_job_index.py`. The lookup control matches ET time and
+scope to an immutable report and explicitly labels reuse as **not a new
+collection**. The execution button always issues a fresh authenticated request.
+The index only verifies report metadata; it neither reruns scoring nor changes
+PARTIAL replay into historical eligibility verification.

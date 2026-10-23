@@ -5,6 +5,7 @@ on:
     paths:
       - 'public/**'
       - '.github/workflows/pages.yml'
+      - 'scripts/build_time_machine_job_index.py'
   workflow_run:
     workflows: ['Test and collect', 'Refresh halt checks', 'Enrich float and borrow', 'Short Squeeze Hunter', 'Time Machine archive and verification', 'Time Machine historical reconstruction', 'Time Machine requested dates verification']
     types: [completed]
@@ -28,6 +29,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+      - name: Index completed external Time Machine requests
+        run: python scripts/build_time_machine_job_index.py
       - uses: actions/configure-pages@v5
         with:
           enablement: true

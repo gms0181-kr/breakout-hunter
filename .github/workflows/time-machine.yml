@@ -10,6 +10,8 @@ on:
       - 'public/time-machine-service.json'
       - 'time-machine-service/**'
       - 'tests/time_machine_browser.py'
+      - 'scripts/build_time_machine_job_index.py'
+      - 'tests/test_time_machine_job_index.py'
       - '.github/workflows/time-machine.yml'
   workflow_dispatch:
   workflow_run:
@@ -45,6 +47,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python -u -m hunter.time_machine_build
+      - name: Index completed external requests for browser lookup
+        run: python scripts/build_time_machine_job_index.py
       - name: Browser runtime replay verification
         run: |
           python -m pip install playwright

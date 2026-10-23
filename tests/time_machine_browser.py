@@ -73,6 +73,21 @@ async def main():
         assert '선택한 시각·범위의 TIME MACHINE 실행' in await page.locator('#tm-status').inner_text()
         assert '이전 요청의 후보를 표시하지 않음' in await page.locator('#tm-candidates').inner_text()
         assert await page.locator('#tm-evaluate').is_disabled()
+        # Real externally collected, immutable reports are lookup evidence;
+        # this does not claim authenticated button dispatch succeeded.
+        completed_reports=list(Path('public/time-machine/jobs').glob('*.json'))
+        assert len(completed_reports)>=2,'Expected both fresh collection reports in checkout'
+        for report_path in completed_reports:
+            completed=json.loads(report_path.read_text());et=completed['job']['et']
+            if et not in ('2026-10-12T14:00','2026-10-15T12:00'):continue
+            await page.locator('#tm-date').fill(et[:10]);await page.locator('#tm-time').fill(et[11:])
+            await page.locator('#tm-run').click();await page.wait_for_function("!document.getElementById('tm-run').disabled")
+            assert completed['job']['id'] in await page.locator('#tm-service-state').inner_text()
+            assert '새 수집 아님' in await page.locator('#tm-service-state').inner_text()
+            assert await page.locator('#tm-candidates tr').count()==len(completed['result']['top20'])
+            assert completed['result']['top20'][0]['ticker'] in await page.locator('#tm-candidates').inner_text()
+            assert 'PARTIAL REPLAY' in await page.locator('#tm-status').inner_text()
+        await page.locator('#tm-date').fill('2026-10-15')
         # Transport fixtures validate the popup bridge only, not live GitHub dispatch.
         await page.wait_for_function("!document.getElementById('tm-execute').disabled")
         await page.evaluate("window.__requests=[];window.__popup={closed:false};window.open=(url)=>{window.__requests.push(url);return window.__popup};void 0")
