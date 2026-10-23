@@ -128,6 +128,17 @@ async def reconstruct(client,cutoff,scope='all'):
     result['missing']=sorted(set(result['missing']+MISSING));result['eligibility_note']='탐색 신호이며 당시 상장 보통주·소형주 적격 후보로 검증되지 않음'
     return {'schema':1,'as_of':cutoff.isoformat(),'retrieved_at':retrieved,'snapshot':snapshot,'result':result,'input_sha256':digest(snapshot)}
 
+def save_reconstruction(result,output):
+    path=Path(output);path.parent.mkdir(parents=True,exist_ok=True)
+    # Full collected inputs are evidence artifacts, never a >100MB Git blob.
+    evidence=path.with_suffix('.inputs.json.gz')
+    with gzip.open(evidence,'wt',encoding='utf-8') as f:json.dump(result,f,ensure_ascii=False,allow_nan=False,separators=(',',':'))
+    summary={k:v for k,v in result.items() if k!='snapshot'}
+    summary['result']=dict(result['result']);locked=result['result']['frozen']
+    summary['result']['frozen']={'selection_hash':locked['selection_hash'],'candidate_count':len(locked['candidates'])}
+    summary['evidence_note']='Complete inputs and frozen candidate set retained in GitHub Actions evidence artifact; public report displays TOP20.'
+    path.write_text(json.dumps(summary,ensure_ascii=False,allow_nan=False,separators=(',',':')))
+
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--et',required=True);parser.add_argument('--scope',choices=['all','china'],default='all');parser.add_argument('--output',default='public/time-machine/reconstruction-latest.json');args=parser.parse_args()
     cutoff=et_instant(args.et)
@@ -136,15 +147,7 @@ def main():
     if not key or not secret:raise ValueError('기존 Alpaca Secrets 접근 불가; 값은 출력하지 않습니다')
     async def run():
         async with aiohttp.ClientSession() as session:return await reconstruct(Client(session,key,secret),cutoff,args.scope)
-    result=asyncio.run(run());path=Path(args.output);path.parent.mkdir(parents=True,exist_ok=True)
-    # Full collected inputs are evidence artifacts, never a >100MB Git blob.
-    evidence=path.with_suffix('.inputs.json.gz')
-    with gzip.open(evidence,'wt',encoding='utf-8') as f:json.dump(result,f,ensure_ascii=False,allow_nan=False,separators=(',',':'))
-    summary={k:v for k,v in result.items() if k!='snapshot'}
-    summary['result']=dict(result['result']);locked=result['result']['frozen']
-    summary['result']['frozen']={'selection_hash':locked['selection_hash'],'candidate_count':len(locked['candidates'])}
-    summary['evidence_note']='Complete inputs and frozen candidate set retained in GitHub Actions evidence artifact; public report displays TOP20.'
-    path.write_text(json.dumps(summary,ensure_ascii=False,allow_nan=False,separators=(',',':'))) 
+    result=asyncio.run(run());save_reconstruction(result,args.output)
     print(json.dumps({'status':result['result']['status'],'candidate_count':result['result']['candidate_count'],'coverage':result['result']['coverage_report']},ensure_ascii=False))
 
 if __name__=='__main__':main()

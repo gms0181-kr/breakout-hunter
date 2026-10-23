@@ -1,0 +1,54 @@
+name: Time Machine requested dates verification
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'hunter/time_machine_job.py'
+      - 'tests/test_time_machine_job.py'
+      - '.github/workflows/time-machine-user-verification.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: time-machine-user-verification
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -v
+      - name: Two independently requested historical dates (fresh collection)
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
+        run: |
+          for requested_et in 2026-10-12T14:00 2026-10-15T12:00; do
+            request_id=$(python -c 'import uuid;print(uuid.uuid4())')
+            python -u -m hunter.time_machine_job --request-id "$request_id" --et "$requested_et" --scope all
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: requested-historical-date-evidence
+          retention-days: 90
+          path: public/time-machine/jobs/
+      - name: Persist only immutable verification results
+        run: |
+          git config user.name breakout-hunter-bot
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add 'public/time-machine/jobs/*.json'
+          git diff --cached --quiet && exit 0
+          git commit -m 'Record requested historical date collection verification [skip ci]'
+          for attempt in 1 2 3; do
+            git pull --rebase origin main && git push && exit 0
+            git rebase --abort || true
+          done
+          exit 1

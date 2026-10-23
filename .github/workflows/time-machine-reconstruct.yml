@@ -1,27 +1,23 @@
 name: Time Machine historical reconstruction
+run-name: TIME MACHINE ${{ inputs.request_id || github.run_id }}
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'hunter/time_machine_reconstruct.py'
-      - 'tests/test_time_machine_reconstruct.py'
-      - '.github/workflows/time-machine-reconstruct.yml'
   workflow_dispatch:
     inputs:
       et:
         description: 'Historical ET local date/time (YYYY-MM-DDTHH:MM)'
         required: true
-        default: '2026-10-15T12:00'
       scope:
-        description: 'Universe scope (historical China classification may be unavailable)'
         type: choice
         options: [all, china]
         default: all
+      request_id:
+        description: 'Server-issued job UUID'
+        required: true
 permissions:
   contents: write
 concurrency:
-  group: independent-historical-reconstruction
-  cancel-in-progress: true
+  group: authenticated-time-machine-collection
+  cancel-in-progress: false
 jobs:
   reconstruct:
     runs-on: ubuntu-latest
@@ -36,28 +32,27 @@ jobs:
       - run: python -m pip install -r requirements.txt
       - name: Regression and historical availability tests
         run: python -m unittest discover -s tests -v
-      - name: External historical reconstruction (no alerts or future prices)
+      - name: External historical collection and existing engine analysis
         env:
           ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
           ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
-          REQUEST_ET: ${{ inputs.et || '2026-10-15T12:00' }}
-          REQUEST_SCOPE: ${{ inputs.scope || 'all' }}
-        run: python -u -m hunter.time_machine_reconstruct --et "$REQUEST_ET" --scope "$REQUEST_SCOPE"
+          REQUEST_ET: ${{ inputs.et }}
+          REQUEST_SCOPE: ${{ inputs.scope }}
+          REQUEST_ID: ${{ inputs.request_id }}
+        run: python -u -m hunter.time_machine_job --request-id "$REQUEST_ID" --et "$REQUEST_ET" --scope "$REQUEST_SCOPE"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: historical-reconstruction-evidence
+          name: time-machine-job-evidence
           retention-days: 90
-          path: |
-            public/time-machine/reconstruction-latest.json
-            public/time-machine/reconstruction-latest.inputs.json.gz
-      - name: Publish isolated reconstruction result
+          path: public/time-machine/jobs/
+      - name: Publish immutable job result
         run: |
           git config user.name breakout-hunter-bot
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add public/time-machine/reconstruction-latest.json
+          git add 'public/time-machine/jobs/*.json'
           git diff --cached --quiet && exit 0
-          git commit -m 'Publish external historical reconstruction [skip ci]'
+          git commit -m 'Publish immutable Time Machine job result [skip ci]'
           for attempt in 1 2 3; do
             git pull --rebase origin main && git push && exit 0
             git rebase --abort || true
