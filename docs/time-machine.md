@@ -103,5 +103,44 @@ https://www.sec.gov/search-filings/edgar-application-programming-interfaces
 
 Malformed-symbol HTTP400 batches are bisected to salvage valid symbols;
 terminal failures list affected symbols and timeframe. Auth/entitlement errors
-are not multiplied into per-symbol retries. Read-only reconstruction jobs use
-latest-request-wins concurrency, independently of live Hunter scheduling.
+are not multiplied into per-symbol retries. Read-only reconstruction jobs are serialized without canceling an earlier user request, independently of live Hunter scheduling.
+
+## Authenticated site execution and future portability
+
+`TIME MACHINE 실행` creates a fresh UUID-correlated request through an
+owner-private Sites gateway. The existing completed-report lookup remains
+separate. Native Sites login may open once in a branded execution window;
+no Actions UI, manual date copying, API key or GitHub token is in browser code.
+Exact-origin/window/nonce messages return progress and TOP20 to the original page.
+The server issues the job ID; workflow run ID and immutable result path are kept
+per job. Submission is idempotent; ambiguous dispatch is not auto-replayed.
+
+The gateway source, tests and schema are mirrored under `time-machine-service/`.
+The operational Site is a deployment component of the current BREAKOUT HUNTER
+work; no `gms0181-kr/breakout-time-machine` repository or migration is created.
+Runtime configuration lives outside source. A future move must transfer the
+existing single engine at a pinned commit/hash, not create a competing engine.
+Collector adapters, request wrapper, gateway and UI use explicit inputs/outputs;
+none reads or mutates Telegram state or imports the live scan entry point.
+
+Deployment components:
+- Python collection + existing engine: `hunter/time_machine_job.py`
+- Workflow adapter: `.github/workflows/time-machine-reconstruct.yml`
+- Auth, quota, job status: `time-machine-service/worker/index.js`
+- Gateway source repository: provisioned by Sites, not a new user GitHub repo
+- Public origin config: `public/time-machine-service.json` (contains URL only)
+- Browser bridge: `public/time-machine-runner.js`
+
+Required server credential: `GITHUB_ACTIONS_TOKEN`, a runtime **secret** with
+Actions read/write for **only** `gms0181-kr/breakout-hunter`. It cannot be obtained
+from GitHub Secrets or exported from the connected GitHub app. Missing credential
+must return 503 and cannot count as an end-to-end execution success. Configure it
+through secure server settings, never source code, browser bundles or chat.
+Existing Alpaca Secrets remain solely in GitHub Actions.
+
+Two-date collection verification is a distinct workflow from authenticated
+button E2E verification. Fresh external API calls and completed report UI tests
+do not prove an authenticated dispatch succeeded. Report these separately.
+
+The gateway has no automatic paid-service purchase and does not change Site
+sharing. It is owner-private; do not make it public without a new auth review.

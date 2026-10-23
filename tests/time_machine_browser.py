@@ -70,9 +70,44 @@ async def main():
         assert await page.locator('#tm-evaluate').is_disabled()
         await page.locator('#tm-time').fill('12:01');await page.locator('#tm-run').click()
         await page.wait_for_function("!document.getElementById('tm-run').disabled")
-        assert '선택한 시각·범위의 워크플로' in await page.locator('#tm-status').inner_text()
+        assert '선택한 시각·범위의 TIME MACHINE 실행' in await page.locator('#tm-status').inner_text()
         assert '이전 요청의 후보를 표시하지 않음' in await page.locator('#tm-candidates').inner_text()
         assert await page.locator('#tm-evaluate').is_disabled()
+        # Transport fixtures validate the popup bridge only, not live GitHub dispatch.
+        await page.wait_for_function("!document.getElementById('tm-execute').disabled")
+        await page.evaluate("window.__requests=[];window.__popup={closed:false};window.open=(url)=>{window.__requests.push(url);return window.__popup}")
+        await page.locator('#tm-time').fill('12:00');await page.locator('#tm-execute').click()
+        assert await page.locator('#tm-date').is_disabled()
+        first=await page.evaluate('window.__requests[0]')
+        assert 'et=2026-10-15T12%3A00' in first,first
+        report=json.loads(json.dumps(fixture));report['job']={'id':'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','et':'2026-10-15T12:00','scope':'all'}
+        report['result']['engine_hash']='dce175439f954828ef814510b6c1db3d2a21cf36b8b5797b642dfc72a2820ec7'
+        payload={'report':report,'job_id':report['job']['id'],'type':'result','channel':'breakout-time-machine'}
+        await page.evaluate("""data=>{data.nonce=new URL(window.__requests[0]).searchParams.get('request_key');window.__reply=data;window.dispatchEvent(new MessageEvent('message',{origin:'https://attacker.invalid',source:window,data}));}""",payload)
+        assert '결과 미확정' in await page.locator('#tm-candidates').inner_text()
+        # A real Window proxy is needed as MessageEvent.source. This owned child
+        # remains local; only the bridge origin value is simulated.
+        await page.evaluate("window.__popup=window;window.open=(url)=>{window.__requests.push(url);return window}")
+        await page.evaluate("window.dispatchEvent(new MessageEvent('message',{origin:'https://breakout-time-machine-runner.rockymite64.chatgpt.site',source:window.__popup,data:{...window.__reply,type:'error',message:'fixture reset'}}))")
+        # Previous attempt's source is deliberately different, so it is ignored.
+        assert await page.locator('#tm-execute').is_disabled()
+        await page.reload();await page.wait_for_function("!document.getElementById('tm-execute').disabled && !document.getElementById('tm-run').disabled")
+        await page.locator('#tm-date').fill('2026-10-15');await page.locator('#tm-time').fill('12:00')
+        await page.evaluate("window.__requests=[];window.open=url=>{window.__requests.push(url);return window}")
+        await page.locator('#tm-execute').click()
+        await page.evaluate("""data=>{data.nonce=new URL(window.__requests[0]).searchParams.get('request_key');window.dispatchEvent(new MessageEvent('message',{origin:'https://breakout-time-machine-runner.rockymite64.chatgpt.site',source:window,data}));}""",payload)
+        assert 'PARTIAL REPLAY' in await page.locator('#tm-status').inner_text()
+        assert '외부 수집·분석 완료' in await page.locator('#tm-service-state').inner_text()
+        assert await page.locator('#tm-evaluate').is_disabled()
+        await page.locator('#tm-date').fill('2026-10-12');await page.locator('#tm-time').fill('14:00');await page.locator('#tm-execute').click()
+        second=await page.evaluate('window.__requests[1]')
+        assert 'et=2026-10-12T14%3A00' in second and first!=second
+        await page.evaluate("""data=>{data.nonce=new URL(window.__requests[1]).searchParams.get('request_key');window.dispatchEvent(new MessageEvent('message',{origin:'https://breakout-time-machine-runner.rockymite64.chatgpt.site',source:window,data}));}""",payload)
+        assert '일치하지 않는 결과를 차단' in await page.locator('#tm-status').inner_text()
+        assert '결과 미확정' in await page.locator('#tm-candidates').inner_text()
+        await page.evaluate("window.dispatchEvent(new MessageEvent('message',{origin:'https://breakout-time-machine-runner.rockymite64.chatgpt.site',source:window,data:{channel:'breakout-time-machine',nonce:new URL(window.__requests[1]).searchParams.get('request_key'),type:'error',message:'503 서버 실행 자격증명 미설정'}}))")
+        assert '503' in await page.locator('#tm-status').inner_text()
+        assert await page.locator('#tm-execute').is_enabled()
         await page.set_viewport_size({'width':390,'height':844});await page.screenshot(path='qa/time-machine-mobile.png',full_page=True)
         assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth'), 'mobile overflow'
         assert not errors,errors

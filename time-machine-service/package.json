@@ -1,0 +1,1 @@
+{"name":"breakout-time-machine-runner","private":true,"type":"module","scripts":{"db:generate":"drizzle-kit generate","test":"node --test tests/*.test.mjs"},"devDependencies":{"drizzle-kit":"0.31.4","drizzle-orm":"0.44.5"}}
