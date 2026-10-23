@@ -52,6 +52,7 @@ def run_detection(snapshot,as_of,mode='all'):
     if mode not in ('all','china'):raise ValueError('지원하지 않는 탐색 범위')
     historical=snapshot.get('acquisition_mode')=='HISTORICAL RECONSTRUCTION'
     acquisition='HISTORICAL RECONSTRUCTION' if historical else 'ARCHIVE REPLAY'
+    universe_complete=snapshot.get('universe_complete') is True and (not historical or snapshot.get('availability_verified') is True)
     base={'acquisition_mode':acquisition,'coverage_report':snapshot.get('coverage_report',{}),'as_of':cutoff.isoformat(),'mode':mode,'engine_hash':hashlib.sha256(Path(__file__).with_name('squeeze_signals.py').read_bytes()).hexdigest(),'snapshot_at':snapshot.get('available_at'),'source_commit':snapshot.get('source_commit'),'replay_type':'historical_input_backtest','universe_complete':False,'missing':[]}
     if not known(snapshot,cutoff,historical):
         return {**base,'status':'NOT REPRODUCIBLE','reason':'분석 시각 이전에 저장·이용 가능했던 종목 스냅샷 없음','examined':0,'candidate_count':0,'top20':[],'frozen':frozen([],cutoff.isoformat(),mode,None)}
@@ -68,6 +69,7 @@ def run_detection(snapshot,as_of,mode='all'):
             elif key=='observation':obs=value
             else:stock[key]=value
         if not stock.get('ticker'):continue
+        if historical and stock.get('historical_eligibility')=='unverified':gaps.append('당시 상장·소형주 적격 미검증')
         if mode=='china':
             if stock.get('china_verified') is not True:
                 china_unknown+=1;continue
@@ -78,12 +80,12 @@ def run_detection(snapshot,as_of,mode='all'):
         if not stock.get('intraday'):gaps.append('당시 장중 5분봉 미확보')
         if not stock.get('sec'):gaps.append('당시 SEC 원문·조건 미확보')
         if analysis['candidate']:
-            results.append({'ticker':stock['ticker'],'name':stock.get('name',''),'analysis':analysis,'status':'PARTIAL REPLAY' if gaps or not snapshot.get('universe_complete') else 'VERIFIED REPLAY','missing':gaps,'provenance':provenance,'stored_signal':row.get('stored_signal'),'split_events':stock.get('split_check',{}).get('events',[])})
+            results.append({'ticker':stock['ticker'],'name':stock.get('name',''),'analysis':analysis,'status':'PARTIAL REPLAY' if gaps or not universe_complete else 'VERIFIED REPLAY','missing':gaps,'provenance':provenance,'stored_signal':row.get('stored_signal'),'split_events':stock.get('split_check',{}).get('events',[])})
         missing.extend(gaps)
     results.sort(key=lambda r:(-(r['analysis']['observed_score'] if r['analysis']['observed_score'] is not None else -1),-r['analysis']['coverage'],r['ticker']))
     # Commit the complete candidate set before any future-data reader is invoked.
     locked=frozen(results,cutoff.isoformat(),mode,snapshot.get('source_commit'))
-    status='VERIFIED REPLAY' if usable and snapshot.get('universe_complete') and not missing and not rejected else 'PARTIAL REPLAY' if usable else 'NOT REPRODUCIBLE'
+    status='VERIFIED REPLAY' if usable and universe_complete and not missing and not rejected else 'PARTIAL REPLAY' if usable else 'NOT REPRODUCIBLE'
     return {**base,'status':status,'reason':(('외부 과거 시세 재수집 · 현재/비활성 자산 카탈로그의 불완전 모집단; 당시 전체 상장 목록·원본 버전 미검증' if historical else '과거 저장 입력으로 현재 엔진 재실행 · 당시 저장 신호와 구분; 전체 종목 원자료·공개 시각 완전성 미검증') if usable else '분석 가능한 과거 가격 입력 또는 당시 검증된 범위 분류 없음'),'examined':examined,'usable_price_stocks':usable,'archived_listing_count':snapshot.get('listing_count') or None,'snapshot_lag_minutes':(cutoff-instant(snapshot['available_at'])).total_seconds()/60,'china_unverified':china_unknown,'rejected_inputs':rejected,'missing':sorted(set(missing+['전체 상장 원자료·탈락 종목 메타데이터의 완전성 미검증'])),'candidate_count':len(results),'top20':results[:20],'frozen':locked}
 
 if __name__=='__main__':
