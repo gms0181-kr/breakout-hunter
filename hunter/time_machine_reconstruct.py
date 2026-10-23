@@ -4,7 +4,7 @@ No archive rows and no future returns are read. The asset catalogue is a discove
 superset only; it is NOT a historical exchange security master. Price existence
 cannot prove historical common-stock / small-cap eligibility.
 """
-import argparse,asyncio,gzip,json,os,re
+import argparse,asyncio,gzip,json,math,os,re
 from collections import Counter
 from datetime import datetime,timedelta,timezone
 from pathlib import Path
@@ -24,17 +24,20 @@ class Client:
     async def get(self,url,params):
         # Sequential requests stay below Basic's request budget. Never log headers/body.
         await asyncio.sleep(.35)
+        last_status=None
         for attempt in range(3):
             self.calls+=1
             try:
                 async with self.session.get(url,headers=self.headers,params=params,timeout=aiohttp.ClientTimeout(total=60)) as response:
                     if response.status==429 or response.status>=500:
+                        last_status=response.status
                         await asyncio.sleep(2**attempt);continue
                     if response.status!=200:
                         self.errors.append({'endpoint':'assets' if url==ASSETS else 'bars','status':response.status});return None
                     return await response.json()
             except (aiohttp.ClientError,asyncio.TimeoutError):
                 if attempt==2:self.errors.append({'endpoint':'transport','status':'unavailable'})
+        if last_status:self.errors.append({'endpoint':'assets' if url==ASSETS else 'bars','status':last_status,'retry_exhausted':True})
         return None
 
 async def catalogue(client):
@@ -76,7 +79,7 @@ def normalize(raw,cutoff,timeframe):
         if available>cutoff:continue
         try:
             v={k:float(b[n]) for k,n in [('open','o'),('high','h'),('low','l'),('close','c'),('volume','v')]}
-            if min(v.values())<=0 or v['low']>min(v['open'],v['close']) or v['high']<max(v['open'],v['close']):continue
+            if not all(math.isfinite(x) for x in v.values()) or min(v.values())<=0 or v['low']>min(v['open'],v['close']) or v['high']<max(v['open'],v['close']):continue
         except (KeyError,TypeError,ValueError):continue
         clean.append({**v,'time':stamp.isoformat(),'event_time':end.isoformat(),'available_at':available.isoformat(),'complete':True,'vwap':b.get('vw'),'source':'Alpaca IEX historical raw','source_adjustment':'raw; historical corrections/vintage unverified'})
     return sorted({b['time']:b for b in clean}.values(),key=lambda b:b['time'])
@@ -107,7 +110,7 @@ async def reconstruct(client,cutoff,scope='all'):
         if intraday:
             b=intraday[-1];inputs['intraday']=envelope(intraday,b['event_time'],b['available_at'],retrieved,'5min aggregate end +20min; original publication/vintage unverified')
         rows.append({'inputs':inputs})
-    report={'catalogue_counts':counts,'requested_symbols':len(symbols),'with_historical_prices':len(rows),'unknown_historical_universe_size':True,'historical_universe_size':None,'missing_universe_count':None,'historical_listing_verified':0,'historical_smallcap_verified':0,'eligibility_unverified':len(rows),**dict(stats),'api_requests':client.calls,'errors':client.errors,'missing':MISSING,'selection_policy':'active + inactive external catalogue; all symbols queried before scoring; no outcome data','requested_cutoff':cutoff.isoformat()}
+    report={'catalogue_source':ASSETS,'price_source':SOURCE,'feed':'iex','adjustment':'raw','catalogue_counts':counts,'requested_symbols':len(symbols),'with_historical_prices':len(rows),'unknown_historical_universe_size':True,'historical_universe_size':None,'missing_universe_count':None,'historical_listing_verified':0,'historical_smallcap_verified':0,'eligibility_unverified':len(rows),**dict(stats),'api_requests':client.calls,'errors':client.errors,'missing':MISSING,'selection_policy':'active + inactive external catalogue; all symbols queried before scoring; no outcome data','requested_cutoff':cutoff.isoformat()}
     snapshot={**envelope(None,cutoff.isoformat(),cutoff.isoformat(),retrieved,'request boundary only; not a historical universe attestation'),'acquisition_mode':'HISTORICAL RECONSTRUCTION','universe_complete':False,'rows':rows,'coverage_report':report,'source_commit':None}
     result=run_detection(snapshot,cutoff.isoformat(),scope)
     result['missing']=sorted(set(result['missing']+MISSING));result['eligibility_note']='탐색 신호이며 당시 상장 보통주·소형주 적격 후보로 검증되지 않음'

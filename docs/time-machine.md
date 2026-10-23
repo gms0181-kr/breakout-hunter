@@ -1,5 +1,9 @@
 # TIME MACHINE — independent point-in-time research
 
+Two modes are separate: ARCHIVE REPLAY reuses saved inputs; HISTORICAL RECONSTRUCTION re-collects external historical prices with incomplete-universe reporting. Neither is claimed to be a full historical market reconstruction.
+
+## ARCHIVE REPLAY
+
 Open `time-machine.html` from the website menu. Choose an ET local date, minute and universe; run the existing Python `squeeze_signals.analyze` in an isolated browser worker. Pyodide is loaded on first use. The exact engine files and historical input bundles are SHA-256 checked before execution. No API credentials, Telegram sender or live collector is loaded.
 
 The archive builder selects the first and last stored scan of each available UTC archive day, up to eight snapshots from the latest 100 scan-data commits. This sampling rule is fixed without reading future returns. It is a sparse archive, not every minute's complete market. The most recent snapshot saved at or before the requested instant is selected; age and missing inputs remain visible. The current engine runs at the requested instant, with unchanged weights and thresholds. The scan-time stored signal is separately retained for comparison. It is not assumed to be the current engine's historical decision.
@@ -90,3 +94,9 @@ by actual workflow responses, not assumed from documentation.
 Full fetched input and complete frozen selection evidence is uploaded as a gzip
 GitHub Actions artifact (90-day retention). The public JSON contains coverage,
 TOP20 and the full selection hash, avoiding oversized Git blobs.
+
+SEC submissions and XBRL are freely accessible, but current company metadata
+is not a historical symbol master. A filing- and issuer-linked publication
+verification adapter is not implemented in this reconstruction. SEC facts are
+therefore missing, not fabricated or labeled impossible to obtain. Reference:
+https://www.sec.gov/search-filings/edgar-application-programming-interfaces

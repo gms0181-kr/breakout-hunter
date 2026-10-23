@@ -64,6 +64,11 @@ class HistoricalClocksTests(unittest.TestCase):
         self.assertIsNone(no_future({'event_time':later},NOW,True))
         v={'retrieved_at':later,'sec':[{'accepted':later},{'accepted':NOW.isoformat()}]}
         clean=no_future(v,NOW,True);self.assertEqual(clean['retrieved_at'],later);self.assertEqual(len(clean['sec']),1)
+    def test_unverified_universe_cannot_become_verified_by_flag_alone(self):
+        from tests.test_time_machine import snapshot
+        s=snapshot();s['acquisition_mode']='HISTORICAL RECONSTRUCTION';s['universe_complete']=True
+        r=run_detection(s,NOW.replace(day=22,hour=20).isoformat())
+        self.assertNotEqual(r['status'],'VERIFIED REPLAY')
     def test_current_session_daily_and_future_intraday_excluded(self):
         raw=[{'t':'2026-10-15T04:00:00Z','o':1,'h':2,'l':1,'c':2,'v':100}]
         self.assertFalse(normalize(raw,NOW,'1Day'))
