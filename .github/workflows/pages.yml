@@ -15,7 +15,7 @@ permissions:
   id-token: write
 concurrency:
   group: pages-${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success' && github.run_id || 'publish' }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   deploy:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
@@ -41,7 +41,9 @@ jobs:
           SITE_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
           python -m pip install playwright
-          python -m playwright install --with-deps chromium
+          if ! command -v google-chrome >/dev/null && ! command -v chromium >/dev/null; then
+            python -m playwright install --with-deps chromium
+          fi
           python tests/browser_qa.py
       - uses: actions/upload-artifact@v4
         if: always()

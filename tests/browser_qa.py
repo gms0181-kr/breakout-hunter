@@ -1,5 +1,5 @@
 """Post-deployment QA. No API credentials are present in this job."""
-import asyncio,json,os
+import asyncio,json,os,shutil
 from pathlib import Path
 from playwright.async_api import async_playwright
 
@@ -8,7 +8,7 @@ async def main():
     Path("qa").mkdir(exist_ok=True)
     evidence=[]
     async with async_playwright() as p:
-        browser=await p.chromium.launch()
+        browser=await p.chromium.launch(executable_path=shutil.which('google-chrome') or shutil.which('chromium') or None)
         for name,width,height in (("desktop",1440,1000),("mobile",390,844),("small-mobile",320,740),("tablet",768,1024),("wide-desktop",1920,1080)):
             print("viewport_start "+name,flush=True)
             page=await browser.new_page(viewport={"width":width,"height":height})
