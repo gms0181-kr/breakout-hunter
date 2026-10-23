@@ -95,6 +95,8 @@ def deliver_telegram(alerts,previous,now,send=None):
     diagnostics=configuration_diagnostics()
     sent=list(previous.get('accepted_ids',[]));out={'status':'not_configured','note':'GitHub Secrets TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID 설정 필요','checked_at':now.isoformat(),'accepted_ids':sent,'accepted_this_run':0,'failed_this_run':0}
     out['configuration']=diagnostics
+    out['format_version']='premium-html-v1'
+    out['message_receipts']=list(previous.get('message_receipts',[]))[-100:]
     for key in ('activation_after','last_accepted_at','last_message_id'):
         if key in previous:out[key]=previous[key]
     if not token and not chat:return out
@@ -106,8 +108,6 @@ def deliver_telegram(alerts,previous,now,send=None):
         out.update(status='rate_limited',retry_not_before=retry.isoformat(),note='Telegram 요청 제한 후 재시도 대기');return out
     activation=instant(previous.get('activation_after'))
     pending=[a for a in alerts if (not activation or (instant(a.get('occurred_at')) and instant(a['occurred_at'])>activation)) if a['id'] not in set(sent) and instant(a.get('occurred_at')) and 0<=(now-instant(a['occurred_at'])).total_seconds()<=3600]
-    out['format_version']='premium-html-v1'
-    out['message_receipts']=list(previous.get('message_receipts',[]))[-100:]
     batches=message_batches(pending)
     for index,(batch,text,buttons) in enumerate(batches):
         if index:

@@ -147,3 +147,11 @@ class PremiumTelegramTests(unittest.TestCase):
     def test_no_new_backlog_replay_and_receipts_survive_upgrade(self):
         previous={'accepted_ids':[alert()['id']],'activation_after':(NOW-timedelta(minutes=1)).isoformat()}
         r,c=self.send_alerts([alert()],previous);self.assertEqual(c,[]);self.assertEqual(r['accepted_ids'],previous['accepted_ids'])
+
+    def test_receipts_survive_rate_limit_and_configuration_failure(self):
+        receipt={'message_id':20,'alert_ids':['old']}
+        previous={'message_receipts':[receipt],'accepted_ids':['old'],'retry_not_before':(NOW+timedelta(minutes=10)).isoformat()}
+        r,c=self.send_alerts([alert()],previous)
+        self.assertEqual(r['status'],'rate_limited');self.assertEqual(r['message_receipts'],[receipt])
+        with patch.dict(os.environ,{},clear=True):r=deliver_telegram([],previous,NOW)
+        self.assertEqual(r['message_receipts'],[receipt])
