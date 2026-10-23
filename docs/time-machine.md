@@ -100,3 +100,8 @@ is not a historical symbol master. A filing- and issuer-linked publication
 verification adapter is not implemented in this reconstruction. SEC facts are
 therefore missing, not fabricated or labeled impossible to obtain. Reference:
 https://www.sec.gov/search-filings/edgar-application-programming-interfaces
+
+Malformed-symbol HTTP400 batches are bisected to salvage valid symbols;
+terminal failures list affected symbols and timeframe. Auth/entitlement errors
+are not multiplied into per-symbol retries. Read-only reconstruction jobs use
+latest-request-wins concurrency, independently of live Hunter scheduling.

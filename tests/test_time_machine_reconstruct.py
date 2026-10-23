@@ -47,6 +47,18 @@ class ReconstructionTests(unittest.IsolatedAsyncioTestCase):
             nonlocal n;n+=1
             return {'bars':{'X':[{'t':str(n)}]},'next_page_token':'next' if n==1 else None}
         c.get=pages;r=await history(c,['X'],NOW,'1Day');self.assertEqual(len(r['X']),2)
+    async def test_one_bad_symbol_does_not_drop_valid_batch(self):
+        c=FakeClient()
+        async def respond(url,p):
+            if 'BAD' in p['symbols'].split(','):c.last_status=400;return None
+            c.last_status=None;return {'bars':{x:bars() for x in p['symbols'].split(',')}}
+        c.get=respond;r=await history(c,['GOOD','BAD','UNSEEN'],NOW,'1Day')
+        self.assertEqual(set(r),{'GOOD','UNSEEN'});self.assertEqual(c.failures['1Day'],['BAD'])
+    async def test_auth_error_is_not_retried_per_symbol(self):
+        c=FakeClient();calls=[]
+        async def denied(url,p):calls.append(p);c.last_status=403;return None
+        c.get=denied;r=await history(c,['A','B','C'],NOW,'1Day')
+        self.assertFalse(r);self.assertEqual(len(calls),1);self.assertEqual(c.failures['1Day'],['A','B','C'])
     async def test_china_unverified_not_guessed(self):
         r=await reconstruct(FakeClient(),NOW,'china');self.assertEqual(r['result']['examined'],0);self.assertEqual(r['result']['china_unverified'],2)
 

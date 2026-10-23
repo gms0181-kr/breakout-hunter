@@ -20,9 +20,10 @@ MISSING=['당시 전체 상장·상장폐지·심볼 변경 목록 미확보', '
 
 class Client:
     def __init__(self,session,key,secret):
-        self.session=session;self.headers={'APCA-API-KEY-ID':key,'APCA-API-SECRET-KEY':secret};self.errors=[];self.calls=0
+        self.session=session;self.headers={'APCA-API-KEY-ID':key,'APCA-API-SECRET-KEY':secret};self.errors=[];self.calls=0;self.last_status=None;self.failures={}
     async def get(self,url,params):
         # Sequential requests stay below Basic's request budget. Never log headers/body.
+        self.last_status=None
         await asyncio.sleep(.35)
         last_status=None
         for attempt in range(3):
@@ -33,10 +34,12 @@ class Client:
                         last_status=response.status
                         await asyncio.sleep(2**attempt);continue
                     if response.status!=200:
+                        self.last_status=response.status
                         self.errors.append({'endpoint':'assets' if url==ASSETS else 'bars','status':response.status});return None
                     return await response.json()
             except (aiohttp.ClientError,asyncio.TimeoutError):
                 if attempt==2:self.errors.append({'endpoint':'transport','status':'unavailable'})
+        if last_status:self.last_status=last_status
         if last_status:self.errors.append({'endpoint':'assets' if url==ASSETS else 'bars','status':last_status,'retry_exhausted':True})
         return None
 
@@ -54,17 +57,26 @@ async def catalogue(client):
 
 async def history(client,symbols,cutoff,timeframe):
     result={};start=cutoff-timedelta(days=120 if timeframe=='1Day' else 1)
-    for i in range(0,len(symbols),100):
-        params={'symbols':','.join(symbols[i:i+100]),'timeframe':timeframe,'start':start.isoformat(),'end':cutoff.isoformat(),'feed':'iex','adjustment':'raw','asof':cutoff.astimezone(ET).date().isoformat(),'limit':10000,'sort':'asc'}
+    if not hasattr(client,'failures'):client.failures={}
+    async def batch(chunk):
+        params={'symbols':','.join(chunk),'timeframe':timeframe,'start':start.isoformat(),'end':cutoff.isoformat(),'feed':'iex','adjustment':'raw','asof':cutoff.astimezone(ET).date().isoformat(),'limit':10000,'sort':'asc'}
         seen=set()
         while True:
             data=await client.get(SOURCE,params)
-            if not isinstance(data,dict):break
+            if not isinstance(data,dict):
+                # One unsupported catalogue symbol must not hide 99 valid symbols.
+                # Bisect only malformed-request responses, never authentication or
+                # entitlement errors. No response body or secrets are logged.
+                if getattr(client,'last_status',None)==400 and len(chunk)>1 and not seen:
+                    middle=len(chunk)//2;await batch(chunk[:middle]);await batch(chunk[middle:])
+                else:client.failures.setdefault(timeframe,[]).extend(chunk)
+                break
             for symbol,bars in data.get('bars',{}).items():result.setdefault(symbol,[]).extend(bars)
             token=data.get('next_page_token')
             if not token:break
             if token in seen:raise ValueError('반복된 페이지 토큰; 불완전 수집 중단')
             seen.add(token);params['page_token']=token
+    for i in range(0,len(symbols),100):await batch(symbols[i:i+100])
     return result
 
 def normalize(raw,cutoff,timeframe):
@@ -110,7 +122,7 @@ async def reconstruct(client,cutoff,scope='all'):
         if intraday:
             b=intraday[-1];inputs['intraday']=envelope(intraday,b['event_time'],b['available_at'],retrieved,'5min aggregate end +20min; original publication/vintage unverified')
         rows.append({'inputs':inputs})
-    report={'catalogue_source':ASSETS,'price_source':SOURCE,'feed':'iex','adjustment':'raw','catalogue_counts':counts,'requested_symbols':len(symbols),'with_historical_prices':len(rows),'unknown_historical_universe_size':True,'historical_universe_size':None,'missing_universe_count':None,'historical_listing_verified':0,'historical_smallcap_verified':0,'eligibility_unverified':len(rows),**dict(stats),'api_requests':client.calls,'errors':client.errors,'missing':MISSING,'selection_policy':'active + inactive external catalogue; all symbols queried before scoring; no outcome data','requested_cutoff':cutoff.isoformat()}
+    report={'catalogue_source':ASSETS,'price_source':SOURCE,'feed':'iex','adjustment':'raw','catalogue_counts':counts,'requested_symbols':len(symbols),'with_historical_prices':len(rows),'unknown_historical_universe_size':True,'historical_universe_size':None,'missing_universe_count':None,'historical_listing_verified':0,'historical_smallcap_verified':0,'eligibility_unverified':len(rows),**dict(stats),'failed_request_symbols':{k:sorted(set(v)) for k,v in getattr(client,'failures',{}).items()},'api_requests':client.calls,'errors':client.errors,'missing':MISSING,'selection_policy':'active + inactive external catalogue; all symbols queried before scoring; no outcome data','requested_cutoff':cutoff.isoformat()}
     snapshot={**envelope(None,cutoff.isoformat(),cutoff.isoformat(),retrieved,'request boundary only; not a historical universe attestation'),'acquisition_mode':'HISTORICAL RECONSTRUCTION','universe_complete':False,'rows':rows,'coverage_report':report,'source_commit':None}
     result=run_detection(snapshot,cutoff.isoformat(),scope)
     result['missing']=sorted(set(result['missing']+MISSING));result['eligibility_note']='탐색 신호이며 당시 상장 보통주·소형주 적격 후보로 검증되지 않음'
