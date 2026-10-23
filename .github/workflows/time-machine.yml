@@ -16,7 +16,8 @@ permissions:
   contents: write
 concurrency:
   group: independent-time-machine
-  cancel-in-progress: false
+  # This read-only derived export is replaceable; live Hunter is unaffected.
+  cancel-in-progress: true
 jobs:
   archive:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
