@@ -1,5 +1,9 @@
 name: Telegram connection test
 on:
+  push:
+    branches: [main]
+    paths:
+      - hunter/squeeze_telegram_test.py
   workflow_dispatch:
 permissions:
   contents: read

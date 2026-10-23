@@ -19,18 +19,68 @@ def display(value):
     if finite(value):return format(value,',.4f').rstrip('0').rstrip('.')
     return json.dumps(value,ensure_ascii=False)
 
+HEADER='🚨 <b>BREAKOUT HUNTER 1.0</b>\n📡 <b>PREMIUM SQUEEZE ALERT</b>\n'
+SEPARATOR='━━━━━━━━━━━━━━━━━━'
+
+def safe(value,limit=240):
+    from html import escape
+    return escape(str(value)[:limit],quote=True)
+
+def detail_url(ticker):
+    from urllib.parse import quote
+    return 'https://gms0181-kr.github.io/breakout-hunter/#short-squeeze/'+quote(str(ticker),safe='')
+
+def signal_style(a):
+    kind=a.get('kind');stage=str(a.get('current','')).replace(' ','_') if kind=='stage_change' else ''
+    if kind=='new_supply_disclosure':return '⚠️','희석 관련 공시 · 즉시 출회 여부 추가 확인',0
+    if stage=='EXPANSION':return '🔴','상승 가속 · 추격 위험 확인',1
+    if stage=='IGNITION':return '🚨','상승 점화 · 확정 매수 신호 아님',1
+    if stage=='SETUP':return '🟠','상승 준비 · 추가 확인 필요',2
+    if kind in ('ctb_surge','borrow_drop','pressure_jump') or stage=='FUEL_BUILDING':return '🟢','초기 포착 · 단일 신호로 숏스퀴즈 확정 불가',3
+    return '🟡','탐색 단계 · 숏스퀴즈 확정 아님 · 매수 신호 아님',4
+
 def alert_text(a):
-    kind=a.get('kind');title=a['ticker']+(' — '+a['company_name'] if a.get('company_name') else '')
-    lines=[title+' | '+KINDS.get(kind,kind or '경보'),'발생 '+stamp(a.get('occurred_at')),'근거 '+stamp(a.get('source_at'))]
-    current=a.get('current')
+    kind=a.get('kind');emoji,risk,_=signal_style(a);current=a.get('current')
+    lines=[emoji+' <b>'+safe(a['ticker'],24)+'</b> '+safe(a.get('company_name',''),100),
+           '🔎 <b>'+safe(KINDS.get(kind,kind or '경보'),60)+'</b>']
     if kind=='market_early_watch' and isinstance(current,dict):
-        lines.append('당일 변화 '+display(current.get('change_pct'))+'(%) · 거래대금 비교 '+display(current.get('dollar_ratio'))+'(배)')
-    else:
-        unit='(%)' if kind=='ctb_surge' else '(주)' if kind=='borrow_drop' else '(점)' if kind=='pressure_jump' else ''
-        lines.append(display(a.get('previous'))+unit+' → '+display(current)+unit)
-    lines.append(str(a.get('evidence') or '')[:400])
-    lines.append('https://gms0181-kr.github.io/breakout-hunter/#short-squeeze/'+a['ticker'])
-    return '\n'.join(lines[:-1])[:850]+'\n'+lines[-1]
+        change=current.get('change_pct');ratio=current.get('dollar_ratio')
+        if finite(change):lines.append('📈 <b>당일 등락률: '+format(change,'+.2f')+'(%)</b>')
+        if finite(ratio):lines.append('🔥 <b>거래대금 비교: '+display(ratio)+'(배)</b>')
+    elif kind in ('ctb_surge','borrow_drop','pressure_jump','stage_change'):
+        label,unit={'ctb_surge':('💸 CTB','(%)'),'borrow_drop':('📉 대차 가능 주식수','(주)'),
+                    'pressure_jump':('🎯 숏 압박 점수','(점)'),'stage_change':('⚡ 단계','')}[kind]
+        lines.append(label+': <b>'+safe(display(a.get('previous'))+unit+' → '+display(current)+unit,180)+'</b>')
+    elif kind=='connection_test':lines.append('🧪 <b>디자인 연결 테스트 · 실제 종목 경보 아님</b>')
+    lines.extend(['📊 <b>탐지 근거</b>\n'+safe(a.get('evidence') or '미확인',180),
+                  '🕒 발생: '+safe(stamp(a.get('occurred_at'))),
+                  '🔎 데이터 근거: '+safe(stamp(a.get('source_at'))),
+                  '⚠️ '+risk])
+    return '\n'.join(lines)
+
+def message_batches(pending):
+    """Priority is presentation only; never modifies engine scores or states."""
+    groups={}
+    for a in sorted(pending,key=lambda a:(signal_style(a)[2],a['occurred_at']))[:20]:
+        groups.setdefault(a['ticker'],[]).append(a)
+    batches=[];batch=[];text=HEADER;buttons=[]
+    def flush():
+        nonlocal batch,text,buttons
+        if batch:batches.append((batch,text,buttons))
+        batch=[];text=HEADER;buttons=[]
+    for ticker,events in groups.items():
+        # One card per ticker, up to five events. Overflow stays pending.
+        events=events[:5]
+        block='\n'+SEPARATOR+'\n'+'\n\n'.join(alert_text(a) for a in events)+'\n'
+        strong=any(a.get('kind')=='stage_change' and a.get('current') in ('IGNITION','EXPANSION') for a in events)
+        if batch and (len(buttons)>=3 or len(text)+len(block)>3600 or strong):flush()
+        if len(HEADER+block)>3600:
+            events=events[:1];block='\n'+SEPARATOR+'\n'+alert_text(events[0])+'\n'
+        text+=block;batch.extend(events)
+        buttons.append([{'text':'🔗 종목 상세 분석','url':detail_url(ticker)}])
+        if strong:flush()
+    flush()
+    return batches[:6]
 
 def configuration_diagnostics():
     """Only booleans and reason codes; never values, lengths, hashes or URLs."""
@@ -56,28 +106,35 @@ def deliver_telegram(alerts,previous,now,send=None):
         out.update(status='rate_limited',retry_not_before=retry.isoformat(),note='Telegram 요청 제한 후 재시도 대기');return out
     activation=instant(previous.get('activation_after'))
     pending=[a for a in alerts if (not activation or (instant(a.get('occurred_at')) and instant(a['occurred_at'])>activation)) if a['id'] not in set(sent) and instant(a.get('occurred_at')) and 0<=(now-instant(a['occurred_at'])).total_seconds()<=3600]
-    pending.sort(key=lambda a:a['occurred_at'])
-    text='BREAKOUT HUNTER 1.0\nIEX 지연 자료 · 숏스퀴즈 확정·매수 신호 아님\n';batch=[]
-    for a in pending[:20]:
-        block='\n'+alert_text(a)+'\n'
-        if len(text)+len(block)>3600:break
-        text+=block;batch.append(a)
-    if not batch:return out
-    try:
-        request=Request('https://api.telegram.org/bot'+token+'/sendMessage',data=json.dumps({'chat_id':chat,'text':text,'link_preview_options':{'is_disabled':True}},ensure_ascii=False).encode(),headers={'Content-Type':'application/json'},method='POST')
-        response=(send or urlopen)(request,timeout=15)
-        with response:
-            body=json.loads(response.read())
-            if not 200<=response.status<300 or body.get('ok') is not True:raise RuntimeError('telegram_rejected')
-            result=body.get('result',{})
-            if str(result.get('chat',{}).get('id'))!=chat or not isinstance(result.get('message_id'),int):raise RuntimeError('recipient_not_verified')
-        out.update(status='telegram_api_accepted',note='Telegram API가 지정 대화로 메시지 접수 확인 · 실제 열람 여부 미확인',accepted_this_run=len(batch),last_accepted_at=now.isoformat(),last_message_id=result['message_id'],accepted_ids=(sent+[a['id'] for a in batch])[-2000:])
-    except Exception as exc:
-        # Exceptions may embed the bot token URL. Persist neither URL nor raw errors.
-        out.update(status='delivery_failed',note='텔레그램 접수 실패 · 다음 스캔 재시도',failed_this_run=len(batch))
-        if getattr(exc,'code',None)==429:
-            from datetime import timedelta
-            out.update(status='rate_limited',note='Telegram 요청 제한 · 재시도 대기',retry_not_before=(now+timedelta(minutes=15)).isoformat())
+    out['format_version']='premium-html-v1'
+    out['message_receipts']=list(previous.get('message_receipts',[]))[-100:]
+    batches=message_batches(pending)
+    for index,(batch,text,buttons) in enumerate(batches):
+        if index:
+            # Same-chat messages are deliberately paced, including private chats.
+            import time
+            time.sleep(3.1)
+        try:
+            payload={'chat_id':chat,'text':text,'parse_mode':'HTML','link_preview_options':{'is_disabled':True},'reply_markup':{'inline_keyboard':buttons}}
+            request=Request('https://api.telegram.org/bot'+token+'/sendMessage',data=json.dumps(payload,ensure_ascii=False).encode(),headers={'Content-Type':'application/json'},method='POST')
+            response=(send or urlopen)(request,timeout=15)
+            with response:
+                body=json.loads(response.read())
+                if not 200<=response.status<300 or body.get('ok') is not True:raise RuntimeError('telegram_rejected')
+                result=body.get('result',{})
+                if str(result.get('chat',{}).get('id'))!=chat or not isinstance(result.get('message_id'),int):raise RuntimeError('recipient_not_verified')
+            ids=[a['id'] for a in batch];sent.extend(ids)
+            out['message_receipts'].append({'message_id':result['message_id'],'accepted_at':now.isoformat(),'alert_ids':ids,'format_version':'premium-html-v1'})
+            out['message_receipts']=out['message_receipts'][-100:]
+            out.update(status='telegram_api_accepted',note='Telegram API가 지정 대화로 메시지 접수 확인 · 실제 열람 여부 미확인',accepted_this_run=out['accepted_this_run']+len(batch),last_accepted_at=now.isoformat(),last_message_id=result['message_id'],accepted_ids=sent[-2000:])
+        except Exception as exc:
+            # Never persist raw API errors, destination IDs or token-bearing URLs.
+            out.update(status='delivery_failed',note='일부 또는 전체 메시지 접수 실패 · 성공 메시지는 재발송하지 않고 다음 스캔 재시도',failed_this_run=len(batch))
+            if getattr(exc,'code',None)==429:
+                from datetime import timedelta
+                out.update(status='rate_limited',note='Telegram 요청 제한 · 재시도 대기',retry_not_before=(now+timedelta(minutes=15)).isoformat())
+            break
+
     return out
 
 if __name__=='__main__':

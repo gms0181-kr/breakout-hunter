@@ -17,6 +17,8 @@ class Response:
     def __exit__(self,*args):pass
 
 class TelegramTests(unittest.TestCase):
+    def setUp(self):
+        p=patch('time.sleep');p.start();self.addCleanup(p.stop)
     def test_missing_and_partial_credentials_never_send(self):
         for env,status in [({},'not_configured'),({'TELEGRAM_CHAT_ID':'42'},'invalid_configuration')]:
             with patch.dict(os.environ,env,clear=True):self.assertEqual(deliver_telegram([alert()],{},NOW,lambda *a,**k:self.fail('sent'))['status'],status)
@@ -40,7 +42,7 @@ class TelegramTests(unittest.TestCase):
         alerts=[{**alert(i),'evidence':'긴근거'*300} for i in range(20)];sent=[]
         def send(req,timeout):sent.append(json.loads(req.data)['text']);return Response()
         with patch.dict(os.environ,ENV,clear=True):r=deliver_telegram(alerts,{},NOW,send)
-        self.assertLessEqual(len(sent[0]),3600);self.assertLess(r['accepted_this_run'],20);self.assertEqual(len(r['accepted_ids']),r['accepted_this_run']);self.assertTrue(sent[0].strip().endswith('/X'))
+        self.assertLessEqual(len(sent[0]),3600);self.assertLess(r['accepted_this_run'],20);self.assertEqual(len(r['accepted_ids']),r['accepted_this_run']);self.assertIn('탐지 근거',sent[0])
     def test_error_and_token_never_persist(self):
         def fail(*a,**k):raise RuntimeError(ENV['TELEGRAM_BOT_TOKEN'])
         with patch.dict(os.environ,ENV,clear=True):r=deliver_telegram([alert()],{},NOW,fail)
@@ -84,3 +86,64 @@ class TelegramActivationTests(unittest.TestCase):
             failed=deliver_telegram([alert()],previous,NOW,lambda *a,**k:Response({'ok':False}))
             result=deliver_telegram([alert()],failed,NOW,lambda *a,**k:Response())
         self.assertEqual(result['accepted_this_run'],1)
+
+class PremiumTelegramTests(unittest.TestCase):
+    def setUp(self):
+        p=patch('time.sleep');p.start();self.addCleanup(p.stop)
+    def send_alerts(self,alerts,previous=None,fail_at=None):
+        calls=[]
+        def send(req,timeout):
+            calls.append(json.loads(req.data))
+            return Response({'ok':False}) if len(calls)==fail_at else Response({'ok':True,'result':{'message_id':len(calls)+20,'chat':{'id':42}}})
+        with patch.dict(os.environ,ENV,clear=True):result=deliver_telegram(alerts,previous or {},NOW,send)
+        return result,calls
+    def test_price_first_html_and_brcb_example_not_hardcoded(self):
+        a={**alert(),'ticker':'BRCB','kind':'market_early_watch','current':{'change_pct':11.09,'dollar_ratio':2.29}}
+        r,c=self.send_alerts([a]);self.assertIn('+11.09(%)',c[0]['text']);self.assertIn('2.29(배)',c[0]['text']);self.assertIn('🟡',c[0]['text']);self.assertEqual(c[0]['parse_mode'],'HTML')
+        self.assertEqual(r['format_version'],'premium-html-v1')
+    def test_ctb_borrow_zero_and_missing(self):
+        for kind,value,unit in [('ctb_surge',50,'(%)'),('borrow_drop',0,'(주)'),('pressure_jump',None,'(점)')]:
+            text=alert_text({**alert(),'kind':kind,'current':value})
+            self.assertIn(('미확인' if value is None else str(value))+unit,text)
+    def test_verified_stage_and_risk_priority(self):
+        from hunter.squeeze_telegram import signal_style
+        for stage,emoji in [('SETUP','🟠'),('IGNITION','🚨'),('EXPANSION','🔴')]:
+            self.assertEqual(signal_style({**alert(),'current':stage})[0],emoji)
+        self.assertEqual(signal_style({**alert(),'kind':'new_supply_disclosure'})[0],'⚠️')
+    def test_html_special_characters_and_long_company(self):
+        from html.parser import HTMLParser
+        text=alert_text({**alert(),'company_name':'A&B <script> "x"'*100,'evidence':'<bad>&'*100})
+        self.assertNotIn('<script>',text);self.assertIn('&amp;',text);self.assertLess(len(text),1800)
+        class Parser(HTMLParser):
+            def handle_starttag(self,tag,attrs):self.assert_tag(tag)
+            def assert_tag(self,tag):assert tag=='b'
+        Parser().feed(text)
+    def test_split_max_three_tickers_and_individual_ignition(self):
+        alerts=[{**alert(i),'ticker':'T'+str(i),'kind':'ctb_surge','current':50} for i in range(10)]
+        r,c=self.send_alerts(alerts)
+        self.assertEqual(r['accepted_this_run'],10);self.assertEqual(len(c),4)
+        self.assertTrue(all(len(p['reply_markup']['inline_keyboard'])<=3 and len(p['text'])<=3600 for p in c))
+        r,c=self.send_alerts([{**alert(i),'ticker':'T'+str(i)} for i in range(3)])
+        self.assertEqual(len(c),3)
+    def test_partial_failure_receipts_and_retry_no_duplicates(self):
+        alerts=[{**alert(i),'ticker':'T'+str(i)} for i in range(3)]
+        r,c=self.send_alerts(alerts,fail_at=2)
+        self.assertEqual(r['accepted_this_run'],1);self.assertEqual(len(r['message_receipts']),1)
+        again,c2=self.send_alerts(alerts,r)
+        self.assertEqual(again['accepted_this_run'],2);self.assertNotIn('T0',c2[0]['text']);self.assertEqual(len(again['message_receipts']),3)
+        final,c3=self.send_alerts(alerts,again);self.assertEqual(c3,[])
+    def test_timestamps_source_is_distinct_and_dst(self):
+        from hunter.squeeze_telegram import stamp
+        self.assertIn('10-23 09:00 KST / 10-22 20:00 ET',stamp(NOW.isoformat()))
+        self.assertIn('01-22 19:00 ET',stamp('2026-01-23T00:00:00+00:00'))
+        text=alert_text({**alert(),'source_at':(NOW-timedelta(days=2)).isoformat()})
+        self.assertIn('발생:',text);self.assertIn('데이터 근거:',text);self.assertIn('10-21',text)
+    def test_buttons_ticker_routes_and_no_unsafe_url(self):
+        from hunter.squeeze_telegram import detail_url
+        r,c=self.send_alerts([{**alert(),'ticker':'A/B&X'}])
+        button=c[0]['reply_markup']['inline_keyboard'][0][0]
+        self.assertEqual(button['text'],'🔗 종목 상세 분석')
+        self.assertEqual(button['url'],detail_url('A/B&X'));self.assertTrue(button['url'].endswith('A%2FB%26X'))
+    def test_no_new_backlog_replay_and_receipts_survive_upgrade(self):
+        previous={'accepted_ids':[alert()['id']],'activation_after':(NOW-timedelta(minutes=1)).isoformat()}
+        r,c=self.send_alerts([alert()],previous);self.assertEqual(c,[]);self.assertEqual(r['accepted_ids'],previous['accepted_ids'])
