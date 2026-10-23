@@ -27,7 +27,8 @@ async def main():
         await page.screenshot(path='qa/time-machine-desktop.png',full_page=True)
         if await page.locator('#tm-evaluate').is_enabled():
             await page.locator('#tm-evaluate').click();await page.wait_for_function("!document.getElementById('tm-evaluate').disabled",timeout=30000)
-            assert '검증 성공률 산출 불가' in await page.locator('#tm-results').inner_text()
+            result_text=await page.locator('#tm-results').inner_text()
+            assert '검증 성공률 산출 불가' in result_text,result_text
         await page.locator('#tm-date').fill('2026-10-15');await page.locator('#tm-time').fill('09:30');await page.locator('#tm-run').click()
         await page.wait_for_function("!document.getElementById('tm-run').disabled",timeout=30000)
         assert 'NOT REPRODUCIBLE' in await page.locator('#tm-status').inner_text()
