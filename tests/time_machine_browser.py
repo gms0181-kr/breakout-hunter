@@ -56,7 +56,9 @@ async def main():
         assert await page.locator('#tm-reconstruction').is_visible()
         fixture={'as_of':'2026-10-15T16:00:00+00:00','result':{'mode':'all','acquisition_mode':'HISTORICAL RECONSTRUCTION','status':'PARTIAL REPLAY','reason':'External reconstruction browser fixture','requested_et':'2026-10-15T12:00 ET','examined':2,'candidate_count':0,'top20':[],'usable_price_stocks':2,'coverage_report':{'requested_symbols':3,'with_historical_prices':2},'missing':['historical eligibility unverified'],'frozen':{'selection_hash':'test'}}}
         await page.route('**/time-machine/reconstruction-latest.json',lambda route:route.fulfill(json=fixture))
-        await page.locator('#tm-time').fill('12:00');await page.locator('#tm-run').click()
+        await page.locator('#tm-time').fill('12:00')
+        assert '2026-10-15T12:00 ET' in await page.locator('#tm-request').inner_text()
+        await page.locator('#tm-run').click()
         await page.wait_for_function("!document.getElementById('tm-run').disabled")
         assert 'HISTORICAL RECONSTRUCTION' in await page.locator('#tm-status').inner_text()
         assert await page.locator('#tm-evaluate').is_disabled()
