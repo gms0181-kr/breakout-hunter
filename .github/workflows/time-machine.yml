@@ -39,7 +39,9 @@ jobs:
       - name: Browser runtime replay verification
         run: |
           python -m pip install playwright
-          python -m playwright install --with-deps chromium
+          if ! command -v google-chrome >/dev/null && ! command -v chromium >/dev/null; then
+            python -m playwright install --with-deps chromium
+          fi
           python tests/time_machine_browser.py
       - uses: actions/upload-artifact@v4
         if: always()

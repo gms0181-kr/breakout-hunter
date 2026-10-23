@@ -1,5 +1,5 @@
 """Exercise the actual WASM Python path, not a JavaScript score imitation."""
-import asyncio,json,threading
+import asyncio,json,threading,shutil
 from datetime import datetime,timedelta
 from functools import partial
 from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler
@@ -13,7 +13,7 @@ async def main():
     index=json.loads(Path('public/time-machine/index.json').read_text());date=(datetime.fromisoformat(next(e for e in index['snapshots'] if e['status']=='PARTIAL REPLAY')['available_at'].replace('Z','+00:00'))+timedelta(minutes=1)).astimezone(ZoneInfo('America/New_York'))
     Path('qa').mkdir(exist_ok=True)
     async with async_playwright() as p:
-        browser=await p.chromium.launch()
+        browser=await p.chromium.launch(executable_path=shutil.which('google-chrome') or shutil.which('chromium') or None)
         page=await browser.new_page(viewport={'width':1440,'height':1000});errors=[]
         page.on('pageerror',lambda e:errors.append(str(e)))
         await page.goto('http://127.0.0.1:8765/time-machine.html')
